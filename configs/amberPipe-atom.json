@@ -1,0 +1,24 @@
+{
+    "dataSource":[{
+        "name": "Tiger Atom Feed - #1",
+        "sourceURL": "http://gate.pform.pwc-apps.com:18151",
+        "protocol": "http",
+        "format": "xml",
+        "feed": "atom",
+        "recordType": "workrecord",
+        "frequencyInSeconds": "10",
+        "batchSize": "100",
+        "maxRetries": "0"
+    },
+    {
+        "name": "Tiger Atom Feed - #2",
+        "sourceURL": "http://gate.pform.pwc-apps.com:18152",
+        "protocol": "http",
+        "format": "xml",
+        "feed": "atom",
+        "recordType": "client",
+        "frequencyInSeconds": "30",
+        "batchSize": "100",
+        "maxRetries": "1"
+    }]
+}

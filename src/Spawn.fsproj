@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="CommandLine.fs" />
+    <Compile Include="Configuration.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Chiron" Version="6.2.1" />
+    <PackageReference Include="FParsec" Version="1.0.3" />
+  </ItemGroup>
+</Project>
