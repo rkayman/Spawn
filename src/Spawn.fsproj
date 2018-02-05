@@ -4,6 +4,7 @@
     <TargetFramework>netcoreapp2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="WrappedString.fs" />
     <Compile Include="CommandLine.fs" />
     <Compile Include="Configuration.fs" />
     <Compile Include="Program.fs" />
