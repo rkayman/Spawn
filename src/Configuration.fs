@@ -91,6 +91,7 @@ module Configuration =
         }
 
     type Configuration with 
+        // TODO: Change to account for array of data sources
         static member FromJson (_:Configuration) = json {
             let! c = Json.read "dataSource"
             return { dataSource = c }
@@ -103,22 +104,3 @@ module Configuration =
     let getConfiguration (file: FileInfo) = 
         let fileContents = readConfig file
         fileContents |> Json.parse |> Json.deserialize
-
-//  static member FromJson json =
-//     match Json.parse json with
-//     | Object config ->
-//         let options =
-//           config
-//           |> Map.toList
-//           |> List.map (fun item ->
-//               match item with
-//               | "Hostname", String x -> Hostname x
-//               | "Port",     Number x -> Port <| int x
-//               | "AuthKey",  String x -> AuthKey x
-//               | "Timeout",  Number x -> Timeout <| int x
-//               | "Database", String x -> Database x
-//               | key, value ->
-//                   raise <| InvalidOperationException
-//                              (sprintf "Unrecognized RethinkDB configuration parameter %s (value %A)" key value))
-//         { Parameters = options }
-//     | _ -> { Parameters = [] }
