@@ -5,13 +5,14 @@ module Configuration =
     open System
     open System.IO
     open System.String.WrappedString
+    open Chiron
 
     module TypeExtensions = 
 
         /// A string of length 100
         type String100 = String100 of string with
             interface IWrappedString with
-                member this.Value = let (String100 s) = this in s
+                member this.Value = let (String100 s) = this in s 
 
         /// A constructor for strings of length 100
         let string100 = create singleLineTrimmed (lengthValidator 100) String100 
@@ -19,22 +20,45 @@ module Configuration =
         /// Converts a wrapped string to a string of length 100
         let convertTo100 s = apply string100 s
 
-        /// A string of length 50
-        type String50 = String50 of string with
-            interface IWrappedString with
-                member this.Value = let (String50 s) = this in s
+        type Protocol = Http | Https | Ftp | Sftp 
 
-        /// A constructor for strings of length 50
-        let string50 = create singleLineTrimmed (lengthValidator 50)  String50
+        let Protocol (s: string) = 
+            match s.ToLowerInvariant() with 
+            | "http"    -> Http 
+            | "https"   -> Https 
+            | "ftp"     -> Ftp 
+            | "sftp"    -> Sftp 
+            | _         -> failwith (sprintf "Unknown protocol: %s" s) 
 
-        /// Converts a wrapped string to a string of length 50
-        let convertTo50 s = apply string50 s
+        type Format = Json | Xml | Csv 
+
+        let Format (s: string) = 
+            match s.ToLowerInvariant() with 
+            | "json"    -> Json 
+            | "xml"     -> Xml 
+            | "csv"     -> Csv 
+            | _         -> failwith (sprintf "Unknown format: %s" s) 
+
+        type Feed = Atom | Rss 
+        
+        let Feed (s: string) = 
+            match s.ToLowerInvariant() with 
+            | "atom"    -> Atom 
+            | "rss"     -> Rss 
+            | _         -> failwith (sprintf "Unknown feed: %s" s) 
+
+        type RecordType = Assignee | Client | WorkRecord 
+
+        let RecordType (s: string) = 
+            match s.ToLowerInvariant() with 
+            | "assignee"    -> Assignee 
+            | "client"      -> Client 
+            | "workrecord"  -> WorkRecord 
+            | _             -> failwith (sprintf "Unknown record type: %s" s) 
 
     open TypeExtensions
 
-    type private Configuration = {
-        dataSource: DataSource
-    } and DataSource = {
+    type DataSource = {
         name: String100;
         sourceUrl: Uri;
         protocol: Protocol;
@@ -43,14 +67,41 @@ module Configuration =
         recordType: RecordType;
         frequencyInSeconds: uint32;
         batchSize: uint32;
-        maxRetries: uint8;
-    } and Protocol = 
-        | HTTP | HTTPS | FTP | FTPS  
-      and Format = 
-        | JSON | XML | CSV 
-      and Feed = 
-        | ATOM | RSS 
-      and RecordType = 
-        | Assignee | Client | WorkRecord 
+        maxRetries: uint16;
+    } with
+        static member FromJson (_: DataSource) = json {
+            let! n = Json.read "name"
+            let! url = Json.read "sourceUrl"
+            let! p = Json.read "protocol" 
+            let! fmt = Json.read "format" 
+            let! f = Json.read "feed" 
+            let! rt = Json.read "recordType" 
+            let! fis = Json.read "frequencyInSeconds" 
+            let! b = Json.read "batchSize" 
+            let! mr = Json.read "maxRetries" 
+            return { name = String100 n; 
+                     sourceUrl = Uri url; 
+                     protocol = Protocol p; 
+                     format = Format fmt; 
+                     feed = Feed f; 
+                     recordType = RecordType rt; 
+                     frequencyInSeconds = fis; 
+                     batchSize = b; 
+                     maxRetries = mr }
+        }
 
-    let getConfiguration (file: FileInfo) = ()
+    type private Configuration = {
+        dataSource: DataSource
+    } with 
+        static member FromJson (_:Configuration) = json {
+            let! c = Json.read "dataSource"
+            return { dataSource = c }
+        } 
+
+    let private readConfig (file: FileInfo) = 
+        use reader = new StreamReader(file.FullName, true)
+        reader.ReadToEnd()
+
+    let getConfiguration (file: FileInfo) = 
+        let config = readConfig file
+        config |> Json.parse |> Json.deserialize
