@@ -90,18 +90,18 @@ module Configuration =
                      maxRetries = mr }
         }
 
-    type Configuration with 
-        // TODO: Change to account for array of data sources
-        static member FromJson (_:Configuration) = json {
-            let! c = Json.read "dataSource"
-            return { dataSource = c }
-        } 
+    // type Configuration with 
+    //     // TODO: Change to account for array of data sources
+    //     static member FromJson (_:Configuration) = json {
+    //         let! c = Json.read "dataSource"
+    //         return { dataSource = c }
+    //     } 
 
     let private configFromJson = function 
-        | Object ds -> Value ds 
+        | Object ds -> Value ds
         | json -> 
             Json.formatWith JsonFormattingOptions.SingleLine json
-            |> sprintf "Expected a string containing a valid ISO-8601 date/time: %s"
+            |> sprintf "Expected a string containing a configuration: %s"
             |> Error
 
     let private fromJsonFoldWith deserialize fold zero xs =
@@ -123,4 +123,4 @@ module Configuration =
 
     let getConfiguration (file: FileInfo) = 
         let fileContents = readConfig file
-        fileContents |> Json.parse |> listFromJsonWith Json.deserialize
+        fileContents |> Json.parse |> configFromJson |> printfn "%A"

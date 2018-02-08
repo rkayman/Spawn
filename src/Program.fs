@@ -5,6 +5,7 @@ open System
 module App =
 
     open CommandLine
+    open Configuration
 
     [<EntryPoint>]
     let main argv =
@@ -24,7 +25,8 @@ module App =
             // TODO: read configuration from file
             // TODO: create agents (actors) using configuration file
             // TODO: consider creating a parent agent to send 'kill' message to all child agents
-            printf "> "
+            getConfiguration <| Option.get options.file
+            printf "\n(Press 'esc' or 'q' to quit) > "
             let rec loop () = 
                 let input = Console.ReadKey(true)
                 match input.Key with 
