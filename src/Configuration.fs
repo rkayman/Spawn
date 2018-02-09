@@ -5,6 +5,7 @@ module Configuration =
     open System
     open System.IO
     open System.String.WrappedString
+    open Chiron
 
     module Types = 
 
@@ -37,7 +38,6 @@ module Configuration =
           and RecordType = Assignee | Client | WorkRecord 
 
 
-    open Chiron
     open Types
 
     let private protocol (s: string) = 
@@ -90,12 +90,12 @@ module Configuration =
                      maxRetries = mr }
         }
 
-    type Configuration with 
-        // TODO: Change to account for array of data sources
-        static member FromJson (_: Configuration) = json {
-            let! c = Json.read "dataSource"
-            return { dataSource = c }
-        } 
+    // type Configuration with 
+    //     // TODO: Change to account for array of data sources
+    //     static member FromJson (_: Configuration) = json {
+    //         let! c = Json.read "dataSource"
+    //         return { dataSource = c }
+    //     } 
 
     // let private configFromJson = function 
     //     | Object ds -> Value ds
@@ -117,9 +117,15 @@ module Configuration =
     //   | Array lst -> fromJsonFoldWith deserialize (fun x xs -> x::xs) [] lst
     //   | _ -> failwith "Expected an array"
 
+    open FSharp.Data
+
+    type private Config = 
+        JsonProvider<"../configs/amberPipe-atom.json", InferTypesFromValues=true, RootName="Config">
+
     let private readConfig (file: FileInfo) = 
         use reader = new StreamReader(file.FullName, true)
         reader.ReadToEnd()
 
     let getConfiguration (file: FileInfo) : Configuration = 
-        file |> readConfig |> Json.parse |> Json.deserialize
+        //file |> readConfig |> Json.parse |> Json.deserialize
+        let config = Config.Load()
