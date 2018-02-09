@@ -126,6 +126,10 @@ module Configuration =
         use reader = new StreamReader(file.FullName, true)
         reader.ReadToEnd()
 
-    let getConfiguration (file: FileInfo) : Configuration = 
+    // let getConfiguration (file: FileInfo) : Configuration = 
         //file |> readConfig |> Json.parse |> Json.deserialize
-        let config = Config.Load()
+    let getConfiguration (file: FileInfo) = 
+        use reader = new StreamReader(file.FullName, true) 
+        let config = Config.Load(reader)
+        printfn "%A" config.JsonValue
+        printfn "%A" config.DataSource
