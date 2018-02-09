@@ -25,7 +25,9 @@ module App =
             // TODO: read configuration from file
             // TODO: create agents (actors) using configuration file
             // TODO: consider creating a parent agent to send 'kill' message to all child agents
-            getConfiguration <| Option.get options.file
+            let config = getConfiguration <| Option.get options.file
+            printfn "%A" config
+
             printf "\n(Press 'esc' or 'q' to quit) > "
             let rec loop () = 
                 let input = Console.ReadKey(true)

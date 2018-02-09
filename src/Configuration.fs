@@ -90,37 +90,36 @@ module Configuration =
                      maxRetries = mr }
         }
 
-    // type Configuration with 
-    //     // TODO: Change to account for array of data sources
-    //     static member FromJson (_:Configuration) = json {
-    //         let! c = Json.read "dataSource"
-    //         return { dataSource = c }
-    //     } 
+    type Configuration with 
+        // TODO: Change to account for array of data sources
+        static member FromJson (_: Configuration) = json {
+            let! c = Json.read "dataSource"
+            return { dataSource = c }
+        } 
 
-    let private configFromJson = function 
-        | Object ds -> Value ds
-        | json -> 
-            Json.formatWith JsonFormattingOptions.SingleLine json
-            |> sprintf "Expected a string containing a configuration: %s"
-            |> Error
+    // let private configFromJson = function 
+    //     | Object ds -> Value ds
+    //     | json -> 
+    //         Json.formatWith JsonFormattingOptions.SingleLine json
+    //         |> sprintf "Expected a string containing a configuration: %s"
+    //         |> Error
 
-    let private fromJsonFoldWith deserialize fold zero xs =
-        List.fold (fun r x ->
-          match r with
-          | Error e -> Error e
-          | Value xs ->
-            match deserialize x with
-            | Value x -> Value (fold x xs)
-            | Error e -> Error e) (Value zero) (List.rev xs)
+    // let private fromJsonFoldWith deserialize fold zero xs =
+    //     List.fold (fun r x ->
+    //       match r with
+    //       | Error e -> Error e
+    //       | Value xs ->
+    //         match deserialize x with
+    //         | Value x -> Value (fold x xs)
+    //         | Error e -> Error e) (Value zero) (List.rev xs)
 
-    let private listFromJsonWith deserialize = function
-      | Array lst -> fromJsonFoldWith deserialize (fun x xs -> x::xs) [] lst
-      | _ -> failwith "Expected an array"
+    // let private listFromJsonWith deserialize = function
+    //   | Array lst -> fromJsonFoldWith deserialize (fun x xs -> x::xs) [] lst
+    //   | _ -> failwith "Expected an array"
 
     let private readConfig (file: FileInfo) = 
         use reader = new StreamReader(file.FullName, true)
         reader.ReadToEnd()
 
-    let getConfiguration (file: FileInfo) = 
-        let fileContents = readConfig file
-        fileContents |> Json.parse |> configFromJson |> printfn "%A"
+    let getConfiguration (file: FileInfo) : Configuration = 
+        file |> readConfig |> Json.parse |> Json.deserialize
