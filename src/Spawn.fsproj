@@ -12,6 +12,5 @@
   <ItemGroup>
     <PackageReference Include="Chiron" Version="6.2.1"/>
     <PackageReference Include="FParsec" Version="1.0.3"/>
-    <PackageReference Include="FSharp.Data" Version="2.4.4"/>
   </ItemGroup>
 </Project>
