@@ -10,25 +10,21 @@ module Agent =
      
     /// Two types of Schedule messages that can be sent
     type ScheduleMessage<'a> =
-      | ScheduleRecurring of ('a -> unit) * 'a * TimeSpan * TimeSpan * CancellationTokenSource AsyncReplyChannel
-      | ScheduleOnce of ('a -> unit) * 'a * TimeSpan * CancellationTokenSource AsyncReplyChannel
+        | ScheduleRecurring of ('a -> unit) * 'a * TimeSpan * TimeSpan * CancellationTokenSource AsyncReplyChannel
+        | ScheduleOnce of ('a -> unit) * 'a * TimeSpan * CancellationTokenSource AsyncReplyChannel
      
     /// An Agent based scheduler
     type SchedulerAgent<'a>() = 
 
         let scheduleOnce delay msg receiver (cts: CancellationTokenSource) = async { 
             do! Async.Sleep delay
-            if cts.IsCancellationRequested
-            then cts.Dispose()
-            else msg |> receiver 
+            if cts.IsCancellationRequested then cts.Dispose() else msg |> receiver 
         }
 
         let scheduleRecurring initialDelay msg receiver delayBetween cts = 
             let rec loop time (cts: CancellationTokenSource) = async { 
                 do! Async.Sleep time
-                if cts.IsCancellationRequested
-                then cts.Dispose()
-                else msg |> receiver
+                if cts.IsCancellationRequested then cts.Dispose() else msg |> receiver
                 return! loop delayBetween cts
             }
             loop initialDelay cts
