@@ -1,6 +1,5 @@
 namespace Amber.Spawn
 
-open FParsec
 module Kafka = 
 
     open System
