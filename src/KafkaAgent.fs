@@ -13,7 +13,7 @@ module Kafka =
         | FetchAtomFeed of Uri * RecordType * String100 
         | Stop 
 
-    type KafkaAgent<'a>() = 
+    type KafkaAgent() = 
 
         let mutable (cts: CancellationTokenSource option) = None 
 
