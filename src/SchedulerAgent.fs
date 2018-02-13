@@ -59,6 +59,6 @@ module Agent =
         member this.Schedule(receiver, msg, initialDelay, ?delayBetween) =
             let buildMessage replyChan =
                 match delayBetween with
-                | Some(x) -> ScheduleRecurring(receiver,msg,initialDelay, x, replyChan)
-                | _ -> ScheduleOnce(receiver,msg,initialDelay, replyChan)
+                | Some(x) -> ScheduleRecurring(receiver, msg, initialDelay, x, replyChan)
+                | _ -> ScheduleOnce(receiver, msg, initialDelay, replyChan)
             scheduler.PostAndReply (fun replyChan -> replyChan |> buildMessage)
