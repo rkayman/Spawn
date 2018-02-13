@@ -56,7 +56,7 @@ module Agent =
 
         /// Schedules a message to be sent to the receiver after the initialDelay.
         ///  If delaybetween is specified then the message is sent recurringly after the delaybetween interval.
-        member this.Schedule(receiver, msg, initialDelay, ?delayBetween) =
+        member __.Schedule(receiver, msg, initialDelay, ?delayBetween) =
             let buildMessage replyChan =
                 match delayBetween with
                 | Some(x) -> ScheduleRecurring(receiver, msg, initialDelay, x, replyChan)
