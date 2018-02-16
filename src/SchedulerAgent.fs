@@ -12,6 +12,7 @@ module Agent =
     type ScheduleMessage<'a> =
         | ScheduleRecurring of ('a -> unit) * 'a * TimeSpan * TimeSpan * CancellationTokenSource AsyncReplyChannel
         | ScheduleOnce of ('a -> unit) * 'a * TimeSpan * CancellationTokenSource AsyncReplyChannel
+        | Stop of CancellationTokenSource 
      
     /// An Agent based scheduler
     type SchedulerAgent<'a>() = 
@@ -32,9 +33,9 @@ module Agent =
         let scheduler = Agent.Start(fun inbox ->
             let rec loop() = async {
                 let! msg = inbox.Receive()
-                let cts = new CancellationTokenSource()
                 match msg with
-                | ScheduleRecurring(receiver, msg:'a, initialDelay, delayBetween, replyChan) ->
+                | ScheduleRecurring (receiver, msg:'a, initialDelay, delayBetween, replyChan) ->
+                    let cts = new CancellationTokenSource() 
                     Async.StartImmediate(scheduleRecurring
                                  (int initialDelay.TotalMilliseconds)
                                  msg
@@ -43,7 +44,9 @@ module Agent =
                                  cts)
                     replyChan.Reply cts
                     return! loop()
-                | ScheduleOnce(receiver, msg:'a, delay, replyChan) ->
+
+                | ScheduleOnce (receiver, msg:'a, delay, replyChan) ->
+                    let cts = new CancellationTokenSource() 
                     Async.StartImmediate(scheduleOnce
                                  (int delay.TotalMilliseconds)
                                  msg
@@ -51,6 +54,9 @@ module Agent =
                                  cts)
                     replyChan.Reply cts
                     return! loop()
+
+                | Stop cts -> 
+                    cts.Dispose()
             }
             loop())
 
