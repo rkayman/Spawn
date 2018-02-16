@@ -9,59 +9,67 @@ module App =
 
     type FooMessage = 
         | Once of TimeSpan * string 
-        | Repeat of TimeSpan * string 
-        | Pause 
+        | Repeat of TimeSpan * TimeSpan * string 
         | Stop 
-        | Restart 
 
     type Agent<'T> = MailboxProcessor<'T>
 
     type SchedulingAgent() = 
 
-        let mutable bar = String.Empty
-
-        let cts = new CancellationTokenSource() 
+        let mutable (cts: CancellationTokenSource) = null 
 
         let printStatus msg = 
-            printfn "[%s] %s" (DateTime.Now.ToString("yyyymmdd hh:mm:ss")) msg 
+            printf "\n[%s] %s\n > " (DateTime.Now.ToString("yyyymmdd hh:mm:ss")) msg 
+
+        let once delay msg = async {
+            do! Async.Sleep delay 
+            if isNull cts |> not && cts.IsCancellationRequested 
+            then cts.Dispose(); cts <- null
+            else printStatus msg
+        }
+
+        let repeat initial between msg = 
+            let rec loop delay = async {
+                do! Async.Sleep delay 
+                if isNull cts |> not && cts.IsCancellationRequested 
+                then cts.Dispose(); cts <- null
+                else printStatus msg; return! loop between
+            }
+            loop initial 
 
         let agent = Agent.Start(fun inbox -> 
-            let rec loop delay remaining reduceBy repeat = async {
-                let! msg = inbox.TryReceive(reduceBy)
+            let rec loop () = async {
+                let! msg = inbox.Receive()
                 match msg with 
-                | None when remaining > 0 -> 
-                    return! loop delay (remaining - reduceBy) reduceBy repeat
-                | None when delay > 0 -> 
-                    printStatus bar 
-                    if repeat then return! loop delay delay reduceBy repeat 
-                    else return! loop 0 0 Timeout.Infinite false 
-                | None -> 
-                    return! loop delay remaining reduceBy repeat  
-                | Some x -> 
-                    match x with 
-                    | Once (initialDelay, resource) -> 
-                        let ms = initialDelay.Seconds * 1000
-                        let x = sprintf "Setting up one-time alarm in %ims" ms 
-                        printStatus x
-                        bar <- resource
-                        return! loop ms ms 1000 false
-                    | Repeat (initialDelay, resource) -> 
-                        let ms = initialDelay.Seconds * 1000
-                        let x = sprintf "Setting up repeating alarm in %ims" ms 
-                        printStatus x
-                        bar <- resource
-                        return! loop ms ms 1000 true 
-                    | Pause -> 
-                        printStatus "Pausing timer" 
-                        return! loop delay remaining Timeout.Infinite repeat 
-                    | Stop -> 
-                        printStatus "Stopping timer" 
-                        return! loop delay delay Timeout.Infinite repeat 
-                    | Restart -> 
-                        printStatus "Resuming timer" 
-                        return! loop delay remaining 1000 repeat 
+                | Once (delay, message) -> 
+                    let ms = delay.Seconds * 1000
+                    printStatus <| sprintf "Setting up alarm in %ims" ms 
+                    cts <- if isNull cts then new CancellationTokenSource()
+                           else
+                               cts.Cancel() 
+                               new CancellationTokenSource()
+                    Async.StartImmediate(once ms message)
+                    return! loop ()
+                
+                | Repeat (initial, between, message) -> 
+                    let ms = initial.Seconds * 1000
+                    let ms' = between.Seconds * 1000 
+                    printStatus <| sprintf "Setting up alarm in %ims repeating every %ims" ms ms' 
+                    cts <- if isNull cts then new CancellationTokenSource()
+                           else
+                               cts.Cancel() 
+                               new CancellationTokenSource()
+                    Async.StartImmediate(repeat ms ms' message)
+                    return! loop ()
+
+                | Stop -> 
+                    if isNull cts then () 
+                    else 
+                        printStatus "Cancelling timer"
+                        cts.Cancel() 
+                    return! loop ()
             }
-            loop 0 0 Timeout.Infinite false)
+            loop ())
 
         member __.SendMessage (msg: FooMessage) = agent.Post msg 
 
@@ -110,22 +118,18 @@ module App =
                     let y = String.Join(' ', msgs) 
                     actor.SendMessage (Once (x, y))
                     loop ()
-                | "repeat"::delay::msgs -> 
-                    let x = TimeSpan(0, 0, delay |> int32) 
-                    let y = String.Join(' ', msgs) 
-                    actor.SendMessage (Repeat (x, y))
+                | "repeat"::initial::between::msgs -> 
+                    let x = TimeSpan(0, 0, initial |> int32) 
+                    let y = TimeSpan(0, 0, between |> int32) 
+                    let z = String.Join(' ', msgs) 
+                    actor.SendMessage (Repeat (x, y, z))
                     loop ()
-                | "pause"::_ -> 
-                    actor.SendMessage (Pause)
-                    loop () 
                 | "stop"::_ -> 
                     actor.SendMessage (Stop) 
                     loop () 
-                | "restart"::_ -> 
-                    actor.SendMessage (Restart) 
-                    loop () 
                 | "quit"::_ -> 
                     printf "\n...quitting..."
+                    actor.SendMessage (Stop)
                 | _ -> 
                     printfn "\nUnknown command"
                     printfn "%s" showHelp 
