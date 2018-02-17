@@ -1,8 +1,10 @@
 ﻿namespace Amber.Spawn
 
+open System
 module App =
 
     open System
+    open System.Collections.Generic
     open System.Threading
     open CommandLine
     open Configuration
@@ -10,66 +12,82 @@ module App =
     type FooMessage = 
         | Once of TimeSpan * string 
         | Repeat of TimeSpan * TimeSpan * string 
-        | Stop 
+        | Stop of uint32 option
+        | List 
 
     type Agent<'T> = MailboxProcessor<'T>
 
     type SchedulingAgent() = 
 
-        let mutable (cts: CancellationTokenSource) = null 
+        // TODO: Add dictionary to track cancellation tokens
+        let mutable dict = new Dictionary<uint32, CancellationTokenSource>()
 
         let printStatus msg = 
-            printf "\n[%s] %s\n > " (DateTime.Now.ToString("yyyymmdd hh:mm:ss")) msg 
+            printf "\n[%s] %s\n > " (DateTime.Now.ToString("yyyyMMdd hh:mm:ss")) msg 
 
-        let once delay msg = async {
+        let once delay msg (token: CancellationTokenSource) = async {
             do! Async.Sleep delay 
-            if isNull cts |> not && cts.IsCancellationRequested 
-            then cts.Dispose(); cts <- null
+            if token.IsCancellationRequested then token.Dispose()
             else printStatus msg
         }
 
-        let repeat initial between msg = 
+        let repeat initial between msg (token: CancellationTokenSource) = 
             let rec loop delay = async {
                 do! Async.Sleep delay 
-                if isNull cts |> not && cts.IsCancellationRequested 
-                then cts.Dispose(); cts <- null
+                if token.IsCancellationRequested then token.Dispose()
                 else printStatus msg; return! loop between
             }
             loop initial 
 
+        let add1 x = x + 1u
+
         let agent = Agent.Start(fun inbox -> 
-            let rec loop () = async {
+            let rec loop cnt = async {
                 let! msg = inbox.Receive()
                 match msg with 
                 | Once (delay, message) -> 
                     let ms = delay.Seconds * 1000
                     printStatus <| sprintf "Setting up alarm in %ims" ms 
-                    cts <- if isNull cts then new CancellationTokenSource()
-                           else
-                               cts.Cancel() 
-                               new CancellationTokenSource()
-                    Async.StartImmediate(once ms message)
-                    return! loop ()
+                    let cts = new CancellationTokenSource()
+                    dict.Add(cnt, cts)
+                    Async.StartImmediate(once ms message cts)
+                    return! loop (add1 cnt)
                 
                 | Repeat (initial, between, message) -> 
                     let ms = initial.Seconds * 1000
                     let ms' = between.Seconds * 1000 
                     printStatus <| sprintf "Setting up alarm in %ims repeating every %ims" ms ms' 
-                    cts <- if isNull cts then new CancellationTokenSource()
-                           else
-                               cts.Cancel() 
-                               new CancellationTokenSource()
-                    Async.StartImmediate(repeat ms ms' message)
-                    return! loop ()
+                    let cts = new CancellationTokenSource()
+                    dict.Add(cnt, cts)
+                    Async.StartImmediate(repeat ms ms' message cts)
+                    return! loop (add1 cnt)
+                
+                | Stop None -> 
+                    printStatus "Cancelling all timers"
+                    for kvp in dict do 
+                        kvp.Value.Cancel() 
+                    dict.Clear() 
+                    return! loop 0u
 
-                | Stop -> 
-                    if isNull cts then () 
-                    else 
+                | Stop x -> 
+                    let key = Option.get x
+                    let mutable cts: CancellationTokenSource = null
+                    let success = dict.TryGetValue(key, &cts) 
+                    if success then
                         printStatus "Cancelling timer"
-                        cts.Cancel() 
-                    return! loop ()
+                        cts.Cancel()
+                        dict.Remove(key) |> printfn "%A"
+                    else 
+                        printStatus "No such alarm"
+                    return! loop cnt
+
+                | List -> 
+                    for x in dict do
+                        sprintf "%i: %A" x.Key x.Value |> printStatus
+                    return! loop cnt
+                    
             }
-            loop ())
+            loop 0u)
 
         member __.SendMessage (msg: FooMessage) = agent.Post msg 
 
@@ -124,12 +142,19 @@ module App =
                     let z = String.Join(' ', msgs) 
                     actor.SendMessage (Repeat (x, y, z))
                     loop ()
-                | "stop"::_ -> 
-                    actor.SendMessage (Stop) 
+                | "stop"::id::_ -> 
+                    let id' = id |> uint32
+                    actor.SendMessage (Stop (Some id')) 
                     loop () 
+                | "stop"::_ -> 
+                    actor.SendMessage (Stop None)
+                    loop ()
+                | "list"::_ -> 
+                    actor.SendMessage (List)
+                    loop ()
                 | "quit"::_ -> 
                     printf "\n...quitting..."
-                    actor.SendMessage (Stop)
+                    actor.SendMessage (Stop None)
                 | _ -> 
                     printfn "\nUnknown command"
                     printfn "%s" showHelp 

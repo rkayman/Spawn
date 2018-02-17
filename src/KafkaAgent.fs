@@ -28,8 +28,8 @@ module Kafka =
 
         let requestFetch = Agent.Start(fun inbox -> 
             let rec loop() = async {
-                let! msg = inbox.TryReceive() 
                 try
+                    let! msg = inbox.Receive() 
                     match msg with 
                     | Some (Init (replyChannel)) -> 
                         if Option.isNone cts then 
