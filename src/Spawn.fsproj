@@ -8,7 +8,7 @@
     <Compile Include="CommandLine.fs" />
     <Compile Include="Configuration.fs" />
     <Compile Include="AgentSystem.fs" />
-    <Compile Include="Scheduler.fs" />
+    <Compile Include="SchedulerAgent.fs" />
     <Compile Include="KafkaAgent.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
