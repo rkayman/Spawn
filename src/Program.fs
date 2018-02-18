@@ -4,111 +4,64 @@ module App =
 
     open System
     open System.Collections.Generic
-    open System.Text
     open System.Threading
     open CommandLine
     open Configuration
 
-    type FooMessage = 
-        | Once of TimeSpan * string * CancellationTokenSource AsyncReplyChannel 
-        | Repeat of TimeSpan * string * CancellationTokenSource AsyncReplyChannel 
-        | Stop of uint32 option * string AsyncReplyChannel 
-        | List of string AsyncReplyChannel
+    type FooMessage<'a> = 
+        | Once of ('a -> unit) * 'a * TimeSpan * CancellationTokenSource AsyncReplyChannel 
+        | Repeat of ('a -> unit) * 'a * TimeSpan * CancellationTokenSource AsyncReplyChannel 
 
     type Agent<'T> = MailboxProcessor<'T>
 
-    type SchedulingAgent() = 
+    type SchedulingAgent<'a>() = 
 
-        let mutable dict = new Dictionary<uint32, CancellationTokenSource>()
-
-        let printStatus msg = 
-            printf "\n[%s] %s\n > " (DateTime.Now.ToString("yyyyMMdd hh:mm:ss")) msg 
-
-        let once delay msg (cts: CancellationTokenSource) = async {
+        let once receiver msg delay (cts: CancellationTokenSource) = async {
             do! Async.Sleep delay 
-            if cts.IsCancellationRequested then cts.Dispose()
-            else printStatus msg
+            if cts.IsCancellationRequested then 
+                printfn "Cancelling alarm"
+                cts.Dispose()
+            else 
+                msg |> receiver
         }
 
-        let repeat delay msg (cts: CancellationTokenSource) = 
-            let rec loop dueTime = async {
-                do! Async.Sleep dueTime 
-                if cts.IsCancellationRequested then cts.Dispose()
-                else printStatus msg; return! loop dueTime
+        let repeat receiver msg delay (cts: CancellationTokenSource) = 
+            let rec loop time (cts': CancellationTokenSource) = async {
+                do! Async.Sleep time 
+                if cts'.IsCancellationRequested then 
+                    printfn "Cancelling repeating alarm"
+                    cts.Dispose()
+                else 
+                    msg |> receiver
+                    return! loop time cts'
             }
-            loop delay 
-
-        let add1 x = x + 1u
+            loop delay cts
 
         let agent = Agent.Start(fun inbox -> 
-            let rec loop cnt = async {
+            let rec loop () = async {
                 let! msg = inbox.Receive()
                 match msg with 
-                | Once (delay, message, replyChannel) -> 
-                    let ms = delay.Seconds * 1000
-                    printStatus <| sprintf "Raise alarm in %ims" ms
+                | Once (receiver, message, delay, replyChannel) -> 
+                    let ms = int delay.TotalMilliseconds
                     let cts = new CancellationTokenSource()
-                    dict.Add(cnt, cts)
-                    Async.StartImmediate(once ms message cts)
+                    Async.StartImmediate(once receiver message ms cts)
                     replyChannel.Reply cts
-                    return! loop (add1 cnt)
+                    return! loop ()
                 
-                | Repeat (delay, message, replyChannel) -> 
-                    let ms = delay.Seconds * 1000
-                    printStatus <| sprintf "Raise alarm repeating every %ims" ms  
+                | Repeat (receiver, message, delay, replyChannel) -> 
+                    let ms = int delay.TotalMilliseconds
                     let cts = new CancellationTokenSource()
-                    dict.Add(cnt, cts)
-                    Async.StartImmediate(repeat ms message cts)
+                    Async.StartImmediate(repeat receiver message ms cts)
                     replyChannel.Reply cts
-                    return! loop (add1 cnt)
-                
-                | Stop (None, replyChannel) -> 
-                    let x = "Cancelling all alarms"
-                    printStatus x
-                    for kvp in dict do 
-                        kvp.Value.Cancel() 
-                    dict.Clear() 
-                    replyChannel.Reply x
-                    return! loop 0u
-
-                | Stop (alarmId, replyChannel) -> 
-                    let key = Option.get alarmId
-                    let mutable cts: CancellationTokenSource = null
-                    let success = dict.TryGetValue(key, &cts) 
-                    let x = if success then
-                                cts.Cancel()
-                                dict.Remove(key) |> printfn "%A"
-                                "Alarm cancelled"
-                            else 
-                                "No such alarm"
-                    printStatus x
-                    replyChannel.Reply x
-                    return! loop cnt
-
-                | List replyChannel -> 
-                    let sb = StringBuilder(1024)
-                    for x in dict do
-                        Printf.bprintf sb "%i: %A\n" x.Key x.Value
-                    let str = sb.ToString()
-                    printStatus str
-                    replyChannel.Reply str
-                    return! loop cnt
+                    return! loop ()
                     
             }
-            loop 0u)
+            loop ())
 
-        member __.ScheduleAlarm(ts, msg, isRepeating) = 
+        member __.ScheduleAlarm(receiver, msg:'a, ts, isRepeating) = 
             let buildMessage replyChannel = 
-                if isRepeating then Repeat (ts, msg, replyChannel)
-                else Once (ts, msg, replyChannel) 
-            agent.PostAndReply (fun rc -> rc |> buildMessage)
-
-        member __.Stop(?alarmId) = 
-            let buildMessage replyChannel = Stop (alarmId, replyChannel)
-            agent.PostAndReply (fun rc -> rc |> buildMessage)
-
-        member __.List() = 
-            let buildMessage replyChannel = List (replyChannel)
+                if isRepeating then Repeat (receiver, msg, ts, replyChannel)
+                else Once (receiver, msg, ts, replyChannel) 
             agent.PostAndReply (fun rc -> rc |> buildMessage)
 
 
@@ -140,46 +93,64 @@ module App =
                             \nrestart\t\tRestart current timer \
                             \nquit\t\tQuit program\n"
 
+            let printReceiver msg = printfn "%s" msg
+
+            let alarms = new Dictionary<uint32, CancellationTokenSource>()
+
+            let add1 x = x + 1u
+
             printf "\nEnter command or 'help' to see available commands\n"
             let actor = SchedulingAgent() 
-            let rec loop () = 
+            let rec loop cnt = 
                 printf " > "
                 let input = Console.ReadLine() 
                 let inputList = input.Split(' ', StringSplitOptions.RemoveEmptyEntries) |> Array.toList
                 match inputList with 
-                | [] -> loop ()
+                | [] -> loop cnt
                 | "help"::_ -> 
                     printfn "%s" showHelp
-                    loop ()
+                    loop cnt
                 | "once"::delay::msgs -> 
-                    let x = TimeSpan(0, 0, delay |> int32) 
-                    let y = String.Join(' ', msgs) 
-                    let cts = actor.ScheduleAlarm(x, y, false)
-                    loop ()
+                    let x = String.Join(' ', msgs) 
+                    let y = TimeSpan(0, 0, delay |> int32) 
+                    let cts = actor.ScheduleAlarm(printReceiver, x, y, false)
+                    alarms.Add(cnt, cts)
+                    loop (add1 cnt)
                 | "repeat"::delay::msgs -> 
-                    let x = TimeSpan(0, 0, delay |> int32) 
-                    let y = String.Join(' ', msgs) 
-                    let cts = actor.ScheduleAlarm(x, y, true)
-                    loop ()
+                    let x = String.Join(' ', msgs) 
+                    let y = TimeSpan(0, 0, delay |> int32) 
+                    let cts = actor.ScheduleAlarm(printReceiver, x, y, true)
+                    alarms.Add(cnt, cts)
+                    loop (add1 cnt)
                 | "stop"::id::_ -> 
-                    let id' = id |> uint32
-                    let msg = actor.Stop(id')
-                    loop () 
+                    let id' = uint32 id
+                    let mutable cts: CancellationTokenSource = null 
+                    let success = alarms.TryGetValue(id', &cts)
+                    if success then 
+                        cts.Cancel()
+                        alarms.Remove(id') |> ignore
+                    else 
+                        eprintfn "Invalid alarm id %s" id
+                    loop cnt
                 | "stop"::_ -> 
-                    let msg = actor.Stop()
-                    loop ()
+                    for x in alarms do 
+                        x.Value.Cancel()
+                    alarms.Clear()
+                    loop 0u
                 | "list"::_ -> 
-                    let msg = actor.List()
-                    loop ()
+                    for x in alarms do 
+                        printfn " %i: %A" x.Key x.Value
+                    loop cnt
                 | "quit"::_ -> 
-                    printf "\n...quitting..."
-                    let msg = actor.Stop()
-                    printfn "%s" msg
+                    printfn "\n...quitting...cancelling all alarms..."
+                    for x in alarms do 
+                        x.Value.Cancel() 
+                    alarms.Clear()
                 | _ -> 
                     printfn "\nUnknown command"
                     printfn "%s" showHelp 
-                    loop ()
-            loop ()
+                    loop cnt
+            loop 0u
 
             // printf "\n(Press 'esc' or 'q' to quit) > "
             // let rec loop () = 
