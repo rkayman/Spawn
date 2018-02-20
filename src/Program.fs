@@ -8,60 +8,68 @@ module App =
     open CommandLine
     open Configuration
 
-    type FooMessage<'a> = 
-        | Once of ('a -> unit) * 'a * TimeSpan * CancellationTokenSource AsyncReplyChannel 
-        | Repeat of ('a -> unit) * 'a * TimeSpan * CancellationTokenSource AsyncReplyChannel 
+    type ResultMessage<'a> = 
+        | Success of 'a
+        | Error of string 
+
+    type ScheduleResult = {
+        agentId: Guid;
+        scheduleId: Guid;
+        cancelToken: CancellationTokenSource;
+    } with member this.CancelSchedule() = this.cancelToken.Cancel()
+
+    type private ScheduleCadence = Once | Repeating 
+
+    type private FooMessage<'a> = 
+        | Schedule of ScheduleCadence * ('a -> unit) * 'a * TimeSpan * 
+                      ScheduleResult ResultMessage AsyncReplyChannel 
 
     type Agent<'T> = MailboxProcessor<'T>
 
     type SchedulingAgent<'a>() = 
 
-        let once receiver msg delay (cts: CancellationTokenSource) = async {
-            do! Async.Sleep delay 
-            if cts.IsCancellationRequested then 
-                printfn "Cancelling alarm"
-                cts.Dispose()
-            else 
-                msg |> receiver
-        }
+        let agentId = Guid.NewGuid() 
 
-        let repeat receiver msg delay (cts: CancellationTokenSource) = 
-            let rec loop time (cts': CancellationTokenSource) = async {
-                do! Async.Sleep time 
-                if cts'.IsCancellationRequested then 
-                    printfn "Cancelling repeating alarm"
-                    cts.Dispose()
-                else 
-                    msg |> receiver
-                    return! loop time cts'
+        let work repeat receiver msg delay (cts: CancellationTokenSource) =
+            let rec loop time (ct: CancellationTokenSource) = async {
+                do! Async.Sleep delay
+                if ct.IsCancellationRequested then ct.Dispose() 
+                else
+                    msg |> receiver 
+                    if repeat then return! loop time ct
             }
             loop delay cts
 
+        let once = work false 
+
+        let repeat = work true
+
+        let cadenceWorker = function 
+            | Once -> once 
+            | Repeating -> repeat
+
         let agent = Agent.Start(fun inbox -> 
             let rec loop () = async {
-                let! msg = inbox.Receive()
-                match msg with 
-                | Once (receiver, message, delay, replyChannel) -> 
-                    let ms = int delay.TotalMilliseconds
-                    let cts = new CancellationTokenSource()
-                    Async.StartImmediate(once receiver message ms cts)
-                    replyChannel.Reply cts
-                    return! loop ()
-                
-                | Repeat (receiver, message, delay, replyChannel) -> 
-                    let ms = int delay.TotalMilliseconds
-                    let cts = new CancellationTokenSource()
-                    Async.StartImmediate(repeat receiver message ms cts)
-                    replyChannel.Reply cts
-                    return! loop ()
-                    
+                let! message = inbox.Receive()
+                match message with 
+                | Schedule (cadence, receiver, msg, ts, replyChannel) -> 
+                    try
+                        let worker = cadenceWorker cadence
+                        let delay = int ts.TotalMilliseconds
+                        let cts = new CancellationTokenSource()
+                        let result = { agentId = agentId; scheduleId = Guid.NewGuid(); cancelToken = cts }
+                        Async.StartImmediate(worker receiver msg delay cts)
+                        replyChannel.Reply (Success result)
+                    with 
+                    | ex -> replyChannel.Reply (Error ex.Message)                    
+                    return! loop ()                    
             }
             loop ())
 
         member __.ScheduleAlarm(receiver, msg:'a, ts, isRepeating) = 
             let buildMessage replyChannel = 
-                if isRepeating then Repeat (receiver, msg, ts, replyChannel)
-                else Once (receiver, msg, ts, replyChannel) 
+                let cadence = if isRepeating then Repeating else Once
+                Schedule (cadence, receiver, msg, ts, replyChannel)
             agent.PostAndReply (fun rc -> rc |> buildMessage)
 
 
@@ -85,83 +93,82 @@ module App =
             let config = getConfiguration <| Option.get options.file
             printfn "%A" config
 
-            let showHelp = "\nhelp\t\tShow this help message \
-                            \nonce\t\tCreate a one-time timer \
-                            \nrepeat\t\tCreate a repeating timer \
-                            \npause\t\tPause current timer (remembers) \
-                            \nstop\t\tStop current timer (resets) \
-                            \nrestart\t\tRestart current timer \
-                            \nquit\t\tQuit program\n"
+            let showHelp = ["help\t\tShow this help message";
+                            "once\t\tCreate a one-time timer";
+                            "repeat\t\tCreate a repeating timer"; 
+                            "stop\t\tStop schedule";
+                            "quit\t\tQuit program"]
 
             let printReceiver msg = printfn "%s" msg
 
-            let alarms = new Dictionary<uint32, CancellationTokenSource>()
+            let schedules = new Dictionary<uint32, ScheduleResult>()
 
             let add1 x = x + 1u
 
+            let makeSchedule id (actor: SchedulingAgent<string>) delay (words: string list) isRepeating = 
+                let msg = String.Join(' ', words) 
+                let ts = TimeSpan(0, 0, delay) 
+                let res = actor.ScheduleAlarm(printReceiver, msg, ts, isRepeating)
+                match res with
+                | Success result -> schedules.Add(id, result)
+                | Error msg -> eprintfn "Error: %s" msg
+
+            let cancelAllSchedules() = 
+                for alarm in schedules.Values do alarm.CancelSchedule()
+                schedules.Clear()
+
+            let updateDisplay (messages: string list) = 
+                Console.SetCursorPosition(0, Console.CursorTop - 7)
+                Console.WriteLine("Current - 5: {0}", "<5x prior current update>")
+                Console.WriteLine("Current - 4: {0}", "<4x prior current update>")
+                Console.WriteLine("Current - 3: {0}", "<3x prior current update>")
+                Console.WriteLine("Current - 2: {0}", "<2x prior current update>")
+                Console.WriteLine("Current - 1: {0}", "<prior current update>")
+                Console.WriteLine("Current    : {0}", "<most current update here>")
+                Console.Write("> ")
+
             printf "\nEnter command or 'help' to see available commands\n"
             let actor = SchedulingAgent() 
+            printf "> "
             let rec loop cnt = 
-                printf " > "
                 let input = Console.ReadLine() 
                 let inputList = input.Split(' ', StringSplitOptions.RemoveEmptyEntries) |> Array.toList
                 match inputList with 
                 | [] -> loop cnt
                 | "help"::_ -> 
-                    printfn "%s" showHelp
+                    updateDisplay showHelp
                     loop cnt
                 | "once"::delay::msgs -> 
-                    let x = String.Join(' ', msgs) 
-                    let y = TimeSpan(0, 0, delay |> int32) 
-                    let cts = actor.ScheduleAlarm(printReceiver, x, y, false)
-                    alarms.Add(cnt, cts)
+                    makeSchedule cnt actor (delay |> int32) msgs false
                     loop (add1 cnt)
                 | "repeat"::delay::msgs -> 
-                    let x = String.Join(' ', msgs) 
-                    let y = TimeSpan(0, 0, delay |> int32) 
-                    let cts = actor.ScheduleAlarm(printReceiver, x, y, true)
-                    alarms.Add(cnt, cts)
+                    makeSchedule cnt actor (delay |> int32) msgs true
                     loop (add1 cnt)
                 | "stop"::id::_ -> 
                     let id' = uint32 id
-                    let mutable cts: CancellationTokenSource = null 
-                    let success = alarms.TryGetValue(id', &cts)
-                    if success then 
-                        cts.Cancel()
-                        alarms.Remove(id') |> ignore
-                    else 
-                        eprintfn "Invalid alarm id %s" id
+                    try
+                        let schedule = schedules.[id']
+                        schedule.CancelSchedule()
+                        schedules.Remove(id') |> ignore
+                    with
+                    | ex -> eprintfn "[Invalid alarm id %s] %A" id ex
                     loop cnt
                 | "stop"::_ -> 
-                    for x in alarms do 
-                        x.Value.Cancel()
-                    alarms.Clear()
+                    cancelAllSchedules()
                     loop 0u
                 | "list"::_ -> 
-                    for x in alarms do 
+                    for x in schedules do 
                         printfn " %i: %A" x.Key x.Value
                     loop cnt
                 | "quit"::_ -> 
-                    printfn "\n...quitting...cancelling all alarms..."
-                    for x in alarms do 
-                        x.Value.Cancel() 
-                    alarms.Clear()
+                    printfn "\n...quitting...cancelling all schedules..."
+                    cancelAllSchedules()
                 | _ -> 
                     printfn "\nUnknown command"
-                    printfn "%s" showHelp 
+                    updateDisplay showHelp
                     loop cnt
             loop 0u
 
-            // printf "\n(Press 'esc' or 'q' to quit) > "
-            // let rec loop () = 
-            //     let input = Console.ReadKey(true)
-            //     match input.Key with 
-            //     | ConsoleKey.Q | ConsoleKey.Escape -> 
-            //         // TODO: cancel all actors (wait for them to finish)
-            //         printf "\n...quitting..."
-            //     | _ -> 
-            //         loop ()
-            // loop ()
             printfn "done\n"
 
         0 // return an integer exit code
