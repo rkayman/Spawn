@@ -93,10 +93,10 @@ module App =
             let config = getConfiguration <| Option.get options.file
             printfn "%A" config
 
-            let showHelp = "\nhelp\t\tShow this help message\n \ 
-                            \nonce\t\tCreate a one-time timer\n \ 
-                            \nrepeat\t\tCreate a repeating timer\n \  
-                            \nstop\t\tStop schedule\n \ 
+            let showHelp = "\nhelp\t\tShow this help message \
+                            \nonce\t\tCreate a one-time timer \
+                            \nrepeat\t\tCreate a repeating timer \
+                            \nstop\t\tStop schedule \
                             \nquit\t\tQuit program\n"
 
             let schedules = new Dictionary<uint32, ScheduleResult>()
@@ -119,7 +119,7 @@ module App =
 
             let displaySchedules() = 
                 for x in schedules do
-                    eprintfn "%03i: %A" x.Key x.Value.scheduleId
+                    eprintfn "%03i: Agent=%A; Schedule=%A" x.Key x.Value.agentId x.Value.scheduleId
 
             eprintf "\nEnter command or 'help' to see available commands\n"
             let actor = SchedulingAgent() 
