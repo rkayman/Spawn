@@ -77,14 +77,14 @@ module App =
     let main argv =
         let args = Array.toList argv
         let result = parse args
-        let printHelp() = helpMsg |> eprintfn "%s" 
+        let printUsage() = usageMsg |> eprintfn "%s" 
 
         match result with 
-        | Help -> printHelp()
+        | Help -> printUsage()
         
         | Errors errors -> 
             errors.PrintErrors 
-            printHelp()
+            printUsage()
 
         | Options options -> 
             eprintfn "\nUsing configuration found in %A...\n" options.file.Value.FullName 
@@ -93,17 +93,21 @@ module App =
             let config = getConfiguration <| Option.get options.file
             printfn "%A" config
 
-            let showHelp = ["help\t\tShow this help message";
-                            "once\t\tCreate a one-time timer";
-                            "repeat\t\tCreate a repeating timer"; 
-                            "stop\t\tStop schedule";
-                            "quit\t\tQuit program"]
-
-            let printReceiver msg = printfn "%s" msg
+            let showHelp = "\nhelp\t\tShow this help message\n \ 
+                            \nonce\t\tCreate a one-time timer\n \ 
+                            \nrepeat\t\tCreate a repeating timer\n \  
+                            \nstop\t\tStop schedule\n \ 
+                            \nquit\t\tQuit program\n"
 
             let schedules = new Dictionary<uint32, ScheduleResult>()
 
             let add1 x = x + 1u
+
+            let cancelAllSchedules() = 
+                for alarm in schedules.Values do alarm.CancelSchedule()
+                schedules.Clear()
+
+            let printReceiver msg = printfn "[%s] %s" (DateTime.Now.ToString("yyyyMMddTHH:mm:ss.fffzzz")) msg
 
             let makeSchedule id (actor: SchedulingAgent<string>) delay (words: string list) isRepeating = 
                 let msg = String.Join(' ', words) 
@@ -113,30 +117,20 @@ module App =
                 | Success result -> schedules.Add(id, result)
                 | Error msg -> eprintfn "Error: %s" msg
 
-            let cancelAllSchedules() = 
-                for alarm in schedules.Values do alarm.CancelSchedule()
-                schedules.Clear()
+            let displaySchedules() = 
+                for x in schedules do
+                    eprintfn "%03i: %A" x.Key x.Value.scheduleId
 
-            let updateDisplay (messages: string list) = 
-                Console.SetCursorPosition(0, Console.CursorTop - 7)
-                Console.WriteLine("Current - 5: {0}", "<5x prior current update>")
-                Console.WriteLine("Current - 4: {0}", "<4x prior current update>")
-                Console.WriteLine("Current - 3: {0}", "<3x prior current update>")
-                Console.WriteLine("Current - 2: {0}", "<2x prior current update>")
-                Console.WriteLine("Current - 1: {0}", "<prior current update>")
-                Console.WriteLine("Current    : {0}", "<most current update here>")
-                Console.Write("> ")
-
-            printf "\nEnter command or 'help' to see available commands\n"
+            eprintf "\nEnter command or 'help' to see available commands\n"
             let actor = SchedulingAgent() 
-            printf "> "
             let rec loop cnt = 
+                eprintf "\n> "
                 let input = Console.ReadLine() 
                 let inputList = input.Split(' ', StringSplitOptions.RemoveEmptyEntries) |> Array.toList
                 match inputList with 
                 | [] -> loop cnt
                 | "help"::_ -> 
-                    updateDisplay showHelp
+                    eprintfn "%s" showHelp
                     loop cnt
                 | "once"::delay::msgs -> 
                     makeSchedule cnt actor (delay |> int32) msgs false
@@ -150,25 +144,26 @@ module App =
                         let schedule = schedules.[id']
                         schedule.CancelSchedule()
                         schedules.Remove(id') |> ignore
+                        displaySchedules()
                     with
                     | ex -> eprintfn "[Invalid alarm id %s] %A" id ex
                     loop cnt
                 | "stop"::_ -> 
                     cancelAllSchedules()
+                    displaySchedules()
                     loop 0u
                 | "list"::_ -> 
-                    for x in schedules do 
-                        printfn " %i: %A" x.Key x.Value
+                    displaySchedules()
                     loop cnt
                 | "quit"::_ -> 
-                    printfn "\n...quitting...cancelling all schedules..."
+                    eprintfn "\n...quitting...cancelling all schedules..."
                     cancelAllSchedules()
                 | _ -> 
-                    printfn "\nUnknown command"
-                    updateDisplay showHelp
+                    eprintfn "\nUnknown command"
+                    eprintfn "%s" showHelp
                     loop cnt
             loop 0u
 
-            printfn "done\n"
+            eprintfn "done\n"
 
         0 // return an integer exit code

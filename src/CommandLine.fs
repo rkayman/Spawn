@@ -1,9 +1,9 @@
 namespace Amber.Spawn 
 
 module CommandLine = 
-    let helpMsg = "\nusage: Spawn [options] \
-                   \n  -h | --help \t\tPrint this help message. \
-                   \n  --config [file] \tRetrieve configuration from [configFile]\n"
+    let usageMsg = "\nusage: Spawn [options] \
+                    \n  -h | --help \t\tPrint this help message. \
+                    \n  --config [file] \tRetrieve configuration from [configFile]\n"
 
     open System.IO
 
