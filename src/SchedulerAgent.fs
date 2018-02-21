@@ -1,70 +1,67 @@
 namespace Amber.Spawn
 
-module Agent = 
+module Scheduler = 
 
     open System
     open System.Threading
+    open Utilities
      
-    //Agent alias for MailboxProcessor
+    type ScheduleResult = {
+        agentId: Guid;
+        scheduleId: Guid;
+        cancelToken: CancellationTokenSource;
+    } with member this.CancelSchedule() = this.cancelToken.Cancel()
+
+    type private ScheduleCadence = Once | Repeating 
+
+    type private ScheduleMessage<'a> = 
+        | Schedule of ScheduleCadence * ('a -> unit) * 'a * TimeSpan * 
+                      ScheduleResult ResultMessage AsyncReplyChannel 
+
     type Agent<'T> = MailboxProcessor<'T>
-     
-    /// Two types of Schedule messages that can be sent
-    type ScheduleMessage<'a> =
-        | ScheduleRecurring of ('a -> unit) * 'a * TimeSpan * TimeSpan * CancellationTokenSource AsyncReplyChannel
-        | ScheduleOnce of ('a -> unit) * 'a * TimeSpan * CancellationTokenSource AsyncReplyChannel
-        | Stop of CancellationTokenSource 
-     
-    /// An Agent based scheduler
-    type SchedulerAgent<'a>() = 
 
-        let scheduleOnce delay msg receiver (cts: CancellationTokenSource) = async { 
-            do! Async.Sleep delay
-            if cts.IsCancellationRequested then cts.Dispose() else msg |> receiver 
-        }
+    type SchedulingAgent<'a>() = 
 
-        let scheduleRecurring initialDelay msg receiver delayBetween cts = 
-            let rec loop time (cts: CancellationTokenSource) = async { 
-                do! Async.Sleep time
-                if cts.IsCancellationRequested then cts.Dispose() else msg |> receiver
-                return! loop delayBetween cts
+        let agentId = Guid.NewGuid() 
+
+        let work repeat receiver msg delay (cts: CancellationTokenSource) =
+            let rec loop time (ct: CancellationTokenSource) = async {
+                do! Async.Sleep delay
+                if ct.IsCancellationRequested then ct.Dispose() 
+                else
+                    msg |> receiver 
+                    if repeat then return! loop time ct
             }
-            loop initialDelay cts
+            loop delay cts
 
-        let scheduler = Agent.Start(fun inbox ->
-            let rec loop() = async {
-                let! msg = inbox.Receive()
-                match msg with
-                | ScheduleRecurring (receiver, msg:'a, initialDelay, delayBetween, replyChan) ->
-                    let cts = new CancellationTokenSource() 
-                    Async.StartImmediate(scheduleRecurring
-                                 (int initialDelay.TotalMilliseconds)
-                                 msg
-                                 receiver
-                                 (int delayBetween.TotalMilliseconds)
-                                 cts)
-                    replyChan.Reply cts
-                    return! loop()
+        let once = work false 
 
-                | ScheduleOnce (receiver, msg:'a, delay, replyChan) ->
-                    let cts = new CancellationTokenSource() 
-                    Async.StartImmediate(scheduleOnce
-                                 (int delay.TotalMilliseconds)
-                                 msg
-                                 receiver
-                                 cts)
-                    replyChan.Reply cts
-                    return! loop()
+        let repeat = work true
 
-                | Stop cts -> 
-                    cts.Dispose()
+        let cadenceWorker = function 
+            | Once -> once 
+            | Repeating -> repeat
+
+        let agent = Agent.Start(fun inbox -> 
+            let rec loop () = async {
+                let! message = inbox.Receive()
+                match message with 
+                | Schedule (cadence, receiver, msg, ts, replyChannel) -> 
+                    try
+                        let worker = cadenceWorker cadence
+                        let delay = int ts.TotalMilliseconds
+                        let cts = new CancellationTokenSource()
+                        let result = { agentId = agentId; scheduleId = Guid.NewGuid(); cancelToken = cts }
+                        Async.StartImmediate(worker receiver msg delay cts)
+                        replyChannel.Reply (Success result)
+                    with 
+                    | ex -> replyChannel.Reply (Error ex.Message)                    
+                    return! loop ()                    
             }
-            loop())
+            loop ())
 
-        /// Schedules a message to be sent to the receiver after the initialDelay.
-        ///  If delaybetween is specified then the message is sent recurringly after the delaybetween interval.
-        member __.Schedule(receiver, msg, initialDelay, ?delayBetween) =
-            let buildMessage replyChan =
-                match delayBetween with
-                | Some(x) -> ScheduleRecurring(receiver, msg, initialDelay, x, replyChan)
-                | _ -> ScheduleOnce(receiver, msg, initialDelay, replyChan)
-            scheduler.PostAndReply (fun replyChan -> replyChan |> buildMessage)
+        member __.ScheduleAlarm(receiver, msg:'a, ts, isRepeating) = 
+            let buildMessage replyChannel = 
+                let cadence = if isRepeating then Repeating else Once
+                Schedule (cadence, receiver, msg, ts, replyChannel)
+            agent.PostAndReply (fun rc -> rc |> buildMessage)
