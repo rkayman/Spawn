@@ -9,12 +9,39 @@ module App =
     open Scheduler
     open Utilities
 
+    let readInput () =
+        let rec readKey cmd =
+            let ki = System.Console.ReadKey(true)
+            match ki.Key with
+            | ConsoleKey.Enter -> cmd
+            | ConsoleKey.Escape -> cmd
+            | ConsoleKey.Backspace ->
+                match cmd with
+                | [] -> readKey []
+                | _::t ->
+                    eprintf "\b \b"
+                    readKey t
+            | _ ->
+                eprintf "%c" ki.KeyChar
+                readKey (ki.KeyChar::cmd)
+        let command = readKey [] |> Seq.rev |> String.Concat
+        eprintfn ""
+        command
+
+    let (|DefaultPrompt|) = function 
+        | s when String.IsNullOrEmpty(s) -> ">" 
+        | s -> s
+
+    let readCommand (DefaultPrompt prompt) = 
+        eprintf "%s " prompt
+        readInput ()
+
     [<EntryPoint>]
     let main argv =
         let args = Array.toList argv
         let result = parse args
         let printUsage() = usageMsg |> eprintfn "%s" 
-
+        
         match result with 
         | Help -> printUsage()
         
@@ -60,8 +87,7 @@ module App =
             eprintf "\nEnter command or 'help' to see available commands\n"
             let actor = SchedulingAgent() 
             let rec loop cnt = 
-                eprintf "\n> "
-                let input = Console.ReadLine() 
+                let input = readCommand String.Empty
                 let inputList = input.Split(' ', StringSplitOptions.RemoveEmptyEntries) |> Array.toList
                 match inputList with 
                 | [] -> loop cnt
