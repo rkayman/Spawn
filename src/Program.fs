@@ -28,20 +28,19 @@ module App =
         eprintfn ""
         command
 
-    let (|DefaultPrompt|) = function 
+    let defaultPrompt = function 
         | s when String.IsNullOrEmpty(s) -> ">" 
         | s -> s
 
-    let readCommand (DefaultPrompt prompt) = 
-        eprintf "%s " prompt
+    let readCommand prompt = 
+        eprintf "%s " <| defaultPrompt prompt
         readInput ()
 
     [<EntryPoint>]
     let main argv =
-        let args = Array.toList argv
-        let result = parse args
-        let printUsage() = usageMsg |> eprintfn "%s" 
+        let printUsage() = eprintfn "%s" usageMsg
         
+        let result = argv |> Array.toList |> parse
         match result with 
         | Help -> printUsage()
         
