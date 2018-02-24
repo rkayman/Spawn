@@ -5,57 +5,10 @@ module App =
     open System
     open System.Collections.Generic
     open System.IO
-    open System.Threading
     open CommandLine
     open Configuration
     open Scheduler
     open Utilities
-
-    type Agent<'T> = MailboxProcessor<'T>
-
-    type ConfigAgentResponse = 
-        | Watching of Guid * string * CancellationTokenSource
-        | Configured of Guid * string
-        | Ignored of Guid * string
-
-    type private ConfigAgentMessage = 
-        | WatchFile of FileInfo * ConfigAgentResponse ResultMessage AsyncReplyChannel
-        // | WatchFolder of DirectoryInfo * ConfigurationManagerResponse ResultMessage AsyncReplyChannel
-        | Configure of Configuration * ConfigAgentResponse ResultMessage AsyncReplyChannel
-
-    type ConfigAgent(cancelToken: CancellationToken) = 
-
-        let agentId = Guid.NewGuid()
-
-        let watchFile (fi: FileInfo) 
-                      (ch: ConfigAgentResponse ResultMessage AsyncReplyChannel) = 
-            let cts = new CancellationTokenSource()
-            let response = sprintf "Watching: %s" fi.FullName
-            printfn "%s" response
-            Success (Watching (agentId, response, cts)) |> ch.Reply
-
-        let configure (cfg: Configuration) 
-                      (ch: ConfigAgentResponse ResultMessage AsyncReplyChannel) = 
-            let response = sprintf "%A" cfg
-            printfn "%s" response
-            Success (Configured (agentId, response)) |> ch.Reply
-
-        let processor (inbox: Agent<_>) = 
-            let rec loop () = async {
-                let! msg = inbox.Receive()
-                match msg with
-                | WatchFile (fi, ch) -> watchFile fi ch
-                | Configure (cfg, ch) -> configure cfg ch
-
-                return! loop ()
-            }
-            loop ()
-
-        let agent = Agent.Start(processor, cancelToken)
-
-        member __.ScheduleWith(cfg: Configuration) =
-            let buildMessage chan = Configure (cfg, chan)
-            agent.PostAndReply (fun ch -> ch |> buildMessage)
 
     let readInput () =
         let rec readKey cmd =
@@ -88,7 +41,7 @@ module App =
     let main argv =
         let printUsage() = eprintfn "%s" usageMsg
         
-        let result = argv |> Array.toList |> parse
+        let result = argv |> Array.toList |> CommandLine.parse
         match result with 
         | Help -> printUsage()
         
@@ -96,17 +49,16 @@ module App =
             errors.PrintErrors 
             printUsage()
 
-        | Options options -> 
-            eprintfn "\nUsing configuration found in %A...\n" options.file.Value.FullName 
+        | Options _ -> 
             // TODO: create agents (actors) using configuration file
             // TODO: consider creating a parent agent to send 'kill' message to all child agents
-            let config = Configuration.ReadConfig <| Option.get options.file
-            printfn "%A" config
-
             let showHelp = "\nhelp\t\tShow this help message \
                             \nonce\t\tCreate a one-time timer \
                             \nrepeat\t\tCreate a repeating timer \
                             \nstop\t\tStop schedule \
+                            \nlist\t\tList schedules \
+                            \nconfig\t\tSet configuration \
+                            \nwatch\t\tWatch file for configuration changes \
                             \nquit\t\tQuit program\n"
 
             let schedules = new Dictionary<uint32, ScheduleResult>()
@@ -132,7 +84,8 @@ module App =
                     eprintfn "%03i: Agent=%A; Schedule=%A" x.Key x.Value.agentId x.Value.scheduleId
 
             eprintf "\nEnter command or 'help' to see available commands\n"
-            let actor = SchedulingAgent() 
+            let scheduleActor = SchedulingAgent() 
+            let configActor = ConfigAgent()
             let rec loop cnt = 
                 let input = readCommand String.Empty
                 let inputList = input.Split(' ', StringSplitOptions.RemoveEmptyEntries) |> Array.toList
@@ -142,10 +95,10 @@ module App =
                     eprintfn "%s" showHelp
                     loop cnt
                 | "once"::delay::msgs -> 
-                    makeSchedule cnt actor (delay |> int32) msgs false
+                    makeSchedule cnt scheduleActor (delay |> int32) msgs false
                     loop (add1 cnt)
                 | "repeat"::delay::msgs -> 
-                    makeSchedule cnt actor (delay |> int32) msgs true
+                    makeSchedule cnt scheduleActor (delay |> int32) msgs true
                     loop (add1 cnt)
                 | "stop"::id::_ -> 
                     let id' = uint32 id
@@ -155,7 +108,7 @@ module App =
                         schedules.Remove(id') |> ignore
                         displaySchedules()
                     with
-                    | ex -> eprintfn "[Invalid alarm id %s] %A" id ex
+                    | ex -> eprintfn "[ERROR] Invalid alarm id %s\n%A" id ex
                     loop cnt
                 | "stop"::_ -> 
                     cancelAllSchedules()
@@ -164,11 +117,25 @@ module App =
                 | "list"::_ -> 
                     displaySchedules()
                     loop cnt
+                | "watch"::path::_ ->
+                    match File.Exists path with
+                    | false -> eprintfn "[ERROR] Unable to find [%s]" path
+                    | true -> 
+                        let result = FileInfo path |> configActor.Watch
+                        eprintfn "%A" result
+                    loop cnt
+                | "config"::path::_ ->
+                    match File.Exists path with
+                    | false -> eprintfn "[ERROR] Unable to find [%s]" path
+                    | true -> 
+                        let result = FileInfo path |> configActor.Configure
+                        eprintfn "%A" result                        
+                    loop cnt
                 | "quit"::_ -> 
                     eprintfn "\n...quitting...cancelling all schedules..."
                     cancelAllSchedules()
                 | _ -> 
-                    eprintfn "\nUnknown command"
+                    eprintfn "\n[ERROR] Unknown command"
                     eprintfn "%s" showHelp
                     loop cnt
             loop 0u

@@ -5,8 +5,7 @@ module Kafka =
     open System
     open System.Threading
     open Configuration
-
-    type Agent<'T> = MailboxProcessor<'T>
+    open Utilities
 
     type FetchMessage =
         | Init of CancellationTokenSource AsyncReplyChannel

@@ -18,8 +18,6 @@ module Scheduler =
         | Schedule of ScheduleCadence * ('a -> unit) * 'a * TimeSpan * 
                       ScheduleResult ResultMessage AsyncReplyChannel 
 
-    type Agent<'T> = MailboxProcessor<'T>
-
     type SchedulingAgent<'a>() = 
 
         let agentId = Guid.NewGuid() 

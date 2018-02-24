@@ -4,8 +4,10 @@ module Configuration =
 
     open System
     open System.IO
+    open System.Threading
     open System.String.WrappedString
     open Chiron
+    open Utilities
 
     /// A string of length 100
     type String100 = String100 of string with
@@ -104,3 +106,53 @@ module Configuration =
                 reader.ReadToEnd()
 
             file |> read |> Json.parse |> Json.deserialize
+
+
+    type ConfigAgentResponse = 
+        | Watching of Guid * string * CancellationTokenSource
+        | Configured of Guid * string
+        | Ignored of Guid * string
+
+    type private ConfigAgentMessage = 
+        | WatchFile of FileInfo * ConfigAgentResponse ResultMessage AsyncReplyChannel
+        // | WatchFolder of DirectoryInfo * ConfigurationManagerResponse ResultMessage AsyncReplyChannel
+        | Configure of FileInfo * ConfigAgentResponse ResultMessage AsyncReplyChannel
+
+    type ConfigAgent() = 
+
+        let agentId = Guid.NewGuid()
+
+        let watchFile (fi: FileInfo) 
+                      (ch: ConfigAgentResponse ResultMessage AsyncReplyChannel) = 
+            let cts = new CancellationTokenSource()
+            let response = sprintf "Watching: %s" fi.FullName
+            printfn "%s" response
+            Success (Watching (agentId, response, cts)) |> ch.Reply
+
+        let configure (fi: FileInfo) 
+                      (ch: ConfigAgentResponse ResultMessage AsyncReplyChannel) = 
+            let config = fi |> Configuration.ReadConfig
+            let response = sprintf "%A" config
+            printfn "%s" response
+            Success (Configured (agentId, response)) |> ch.Reply
+
+        let processor (inbox: Agent<_>) = 
+            let rec loop () = async {
+                let! msg = inbox.Receive()
+                match msg with
+                | WatchFile (fi, ch) -> watchFile fi ch
+                | Configure (cfg, ch) -> configure cfg ch
+
+                return! loop ()
+            }
+            loop ()
+
+        let agent = Agent.Start processor
+
+        member __.Configure(fi: FileInfo) =
+            let buildMessage chan = Configure (fi, chan)
+            agent.PostAndReply buildMessage
+
+        member __.Watch(fi: FileInfo) = 
+            let buildMessage chan = WatchFile (fi, chan)
+            agent.PostAndReply buildMessage
