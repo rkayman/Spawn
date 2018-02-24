@@ -4,10 +4,58 @@ module App =
 
     open System
     open System.Collections.Generic
+    open System.IO
+    open System.Threading
     open CommandLine
     open Configuration
     open Scheduler
     open Utilities
+
+    type Agent<'T> = MailboxProcessor<'T>
+
+    type ConfigAgentResponse = 
+        | Watching of Guid * string * CancellationTokenSource
+        | Configured of Guid * string
+        | Ignored of Guid * string
+
+    type private ConfigAgentMessage = 
+        | WatchFile of FileInfo * ConfigAgentResponse ResultMessage AsyncReplyChannel
+        // | WatchFolder of DirectoryInfo * ConfigurationManagerResponse ResultMessage AsyncReplyChannel
+        | Configure of Configuration * ConfigAgentResponse ResultMessage AsyncReplyChannel
+
+    type ConfigAgent(cancelToken: CancellationToken) = 
+
+        let agentId = Guid.NewGuid()
+
+        let watchFile (fi: FileInfo) 
+                      (ch: ConfigAgentResponse ResultMessage AsyncReplyChannel) = 
+            let cts = new CancellationTokenSource()
+            let response = sprintf "Watching: %s" fi.FullName
+            printfn "%s" response
+            Success (Watching (agentId, response, cts)) |> ch.Reply
+
+        let configure (cfg: Configuration) 
+                      (ch: ConfigAgentResponse ResultMessage AsyncReplyChannel) = 
+            let response = sprintf "%A" cfg
+            printfn "%s" response
+            Success (Configured (agentId, response)) |> ch.Reply
+
+        let processor (inbox: Agent<_>) = 
+            let rec loop () = async {
+                let! msg = inbox.Receive()
+                match msg with
+                | WatchFile (fi, ch) -> watchFile fi ch
+                | Configure (cfg, ch) -> configure cfg ch
+
+                return! loop ()
+            }
+            loop ()
+
+        let agent = Agent.Start(processor, cancelToken)
+
+        member __.ScheduleWith(cfg: Configuration) =
+            let buildMessage chan = Configure (cfg, chan)
+            agent.PostAndReply (fun ch -> ch |> buildMessage)
 
     let readInput () =
         let rec readKey cmd =
@@ -52,7 +100,7 @@ module App =
             eprintfn "\nUsing configuration found in %A...\n" options.file.Value.FullName 
             // TODO: create agents (actors) using configuration file
             // TODO: consider creating a parent agent to send 'kill' message to all child agents
-            let config = getConfiguration <| Option.get options.file
+            let config = Configuration.ReadConfig <| Option.get options.file
             printfn "%A" config
 
             let showHelp = "\nhelp\t\tShow this help message \
