@@ -4,7 +4,7 @@ module Kafka =
 
     open System
     open System.Threading
-    open Configuration.Types
+    open Configuration
 
     type Agent<'T> = MailboxProcessor<'T>
 
