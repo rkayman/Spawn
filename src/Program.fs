@@ -7,7 +7,6 @@ module App =
     open System.IO
     open CommandLine
     open Configuration
-    open Courier
     open Scheduler
     open Utilities
 
@@ -62,9 +61,10 @@ module App =
                             \nquit\t\tQuit program\n"
 
             let schedules = new Dictionary<uint32, ScheduleResult>()
-            let scheduleActor = SchedulingAgent() 
+
             let configActor = ConfigAgent()
-            let courierActor = CourierAgent()
+            let courierActor = Courier.Kafka.KafkaCourierAgent() //CourierAgent()
+            let scheduleActor = SchedulerAgent() 
 
             let add1 x = x + 1u
 
@@ -73,14 +73,14 @@ module App =
                 schedules.Clear()
 
             //let printReceiver msg = printfn "[%s] %s" (DateTime.Now.ToString("yyyyMMddTHH:mm:ss.fffzzz")) msg
-            let forward (actor:CourierAgent<_>) msg = 
+            let forward (actor: Courier.CourierAgent<_>) msg = 
                 match msg |> actor.Send with
                 | Success result -> eprintfn "%A" result
                 | Error msg -> eprintfn "Error: %s" msg
 
             let forwardToCourier = forward courierActor
 
-            let makeSchedule id (actor: SchedulingAgent<string>) delay (words: string list) isRepeating = 
+            let makeSchedule id (actor: SchedulerAgent<string>) delay (words: string list) isRepeating = 
                 let msg = String.Join(' ', words) 
                 let ts = TimeSpan(0, 0, delay) 
                 let res = actor.ScheduleAlarm(forwardToCourier, msg, ts, isRepeating)
@@ -90,7 +90,7 @@ module App =
 
             let displaySchedules() = 
                 for x in schedules do
-                    eprintfn "%03i: Agent=%A; Schedule=%A" x.Key x.Value.agentId x.Value.scheduleId
+                    eprintfn "%03i: Scheduler = %A; Timer = %A" x.Key x.Value.agentId x.Value.scheduleId
 
             eprintf "\nEnter command or 'help' to see available commands\n"
             let rec loop cnt = 

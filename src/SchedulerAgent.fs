@@ -17,12 +17,13 @@ module Scheduler =
     type private ScheduleMessage<'a> = 
         | Schedule of ScheduleCadence * TimeSpan * ('a -> unit) * 'a * 
                       ScheduleResult ResultMessage AsyncReplyChannel 
+        | Stop of string ResultMessage AsyncReplyChannel
 
-    type SchedulingAgent<'a>() = 
-
+    type SchedulerAgent<'a>() = 
+        // TODO: add dictionary of all schedules so we can clean up on STOP request
         let agentId = Guid.NewGuid() 
 
-        let work repeat delay receiver msg (cts: CancellationTokenSource) =
+        let timer repeat delay receiver msg (cts: CancellationTokenSource) =
             let rec loop time (ct: CancellationTokenSource) = async {
                 do! Async.Sleep delay
                 if ct.IsCancellationRequested then ct.Dispose() 
@@ -32,9 +33,9 @@ module Scheduler =
             }
             loop delay cts
 
-        let once = work false 
+        let once = timer false 
 
-        let repeat = work true
+        let repeat = timer true
 
         let cadenceWorker = function 
             | Once -> once 
@@ -54,12 +55,20 @@ module Scheduler =
                         replyChannel.Reply (Success result)
                     with 
                     | ex -> replyChannel.Reply (Error ex.Message)                    
-                    return! loop ()                    
+                    return! loop ()
+
+                | Stop ch -> 
+                    sprintf "Stopping Scheduler {%A} with %i messages in queue. ** Alarms may still be running! **" 
+                        agentId inbox.CurrentQueueLength
+                    |> Success |> ch.Reply
+                    return! async.Zero()
             }
             loop ())
+
+        member __.Id with get() = agentId
 
         member __.ScheduleAlarm(receiver, msg:'a, ts, isRepeating) = 
             let buildMessage replyChannel = 
                 let cadence = if isRepeating then Repeating else Once
                 Schedule (cadence, ts, receiver, msg, replyChannel)
-            agent.PostAndReply (fun rc -> rc |> buildMessage)
+            agent.PostAndReply buildMessage

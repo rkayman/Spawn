@@ -136,6 +136,8 @@ module Configuration =
             }
             loop ())
 
+        member __.Id with get() = agentId
+        
         member __.Configure(fi: FileInfo) =
             let buildMessage chan = Configure (fi, chan)
             agent.PostAndReply buildMessage
