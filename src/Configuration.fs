@@ -4,7 +4,6 @@ module Configuration =
 
     open System
     open System.IO
-    open System.Threading
     open System.String.WrappedString
     open Chiron
     open Utilities
@@ -109,25 +108,17 @@ module Configuration =
 
 
     type ConfigAgentResponse = 
-        | Watching of Guid * string * CancellationTokenSource
         | Configured of Guid * string
-        | Ignored of Guid * string
 
     type private ConfigAgentMessage = 
-        | WatchFile of FileInfo * ConfigAgentResponse ResultMessage AsyncReplyChannel
+        //| WatchFile of FileInfo * ConfigAgentResponse ResultMessage AsyncReplyChannel
         // | WatchFolder of DirectoryInfo * ConfigurationManagerResponse ResultMessage AsyncReplyChannel
         | Configure of FileInfo * ConfigAgentResponse ResultMessage AsyncReplyChannel
+        | Stop
 
     type ConfigAgent() = 
 
         let agentId = Guid.NewGuid()
-
-        let watchFile (fi: FileInfo) 
-                      (ch: ConfigAgentResponse ResultMessage AsyncReplyChannel) = 
-            let cts = new CancellationTokenSource()
-            let response = sprintf "Watching: %s" fi.FullName
-            printfn "%s" response
-            Success (Watching (agentId, response, cts)) |> ch.Reply
 
         let configure (fi: FileInfo) 
                       (ch: ConfigAgentResponse ResultMessage AsyncReplyChannel) = 
@@ -136,23 +127,15 @@ module Configuration =
             printfn "%s" response
             Success (Configured (agentId, response)) |> ch.Reply
 
-        let processor (inbox: Agent<_>) = 
+        let agent = Agent.Start (fun inbox -> 
             let rec loop () = async {
                 let! msg = inbox.Receive()
                 match msg with
-                | WatchFile (fi, ch) -> watchFile fi ch
-                | Configure (cfg, ch) -> configure cfg ch
-
-                return! loop ()
+                | Configure (cfg, ch) -> configure cfg ch; return! loop ()
+                | Stop -> return! async.Zero()
             }
-            loop ()
-
-        let agent = Agent.Start processor
+            loop ())
 
         member __.Configure(fi: FileInfo) =
             let buildMessage chan = Configure (fi, chan)
-            agent.PostAndReply buildMessage
-
-        member __.Watch(fi: FileInfo) = 
-            let buildMessage chan = WatchFile (fi, chan)
             agent.PostAndReply buildMessage

@@ -7,6 +7,7 @@ module App =
     open System.IO
     open CommandLine
     open Configuration
+    open Courier
     open Scheduler
     open Utilities
 
@@ -58,10 +59,12 @@ module App =
                             \nstop\t\tStop schedule \
                             \nlist\t\tList schedules \
                             \nconfig\t\tSet configuration \
-                            \nwatch\t\tWatch file for configuration changes \
                             \nquit\t\tQuit program\n"
 
             let schedules = new Dictionary<uint32, ScheduleResult>()
+            let scheduleActor = SchedulingAgent() 
+            let configActor = ConfigAgent()
+            let courierActor = CourierAgent()
 
             let add1 x = x + 1u
 
@@ -69,12 +72,18 @@ module App =
                 for alarm in schedules.Values do alarm.CancelSchedule()
                 schedules.Clear()
 
-            let printReceiver msg = printfn "[%s] %s" (DateTime.Now.ToString("yyyyMMddTHH:mm:ss.fffzzz")) msg
+            //let printReceiver msg = printfn "[%s] %s" (DateTime.Now.ToString("yyyyMMddTHH:mm:ss.fffzzz")) msg
+            let forward (actor:CourierAgent<_>) msg = 
+                match msg |> actor.Send with
+                | Success result -> eprintfn "%A" result
+                | Error msg -> eprintfn "Error: %s" msg
+
+            let forwardToCourier = forward courierActor
 
             let makeSchedule id (actor: SchedulingAgent<string>) delay (words: string list) isRepeating = 
                 let msg = String.Join(' ', words) 
                 let ts = TimeSpan(0, 0, delay) 
-                let res = actor.ScheduleAlarm(printReceiver, msg, ts, isRepeating)
+                let res = actor.ScheduleAlarm(forwardToCourier, msg, ts, isRepeating)
                 match res with
                 | Success result -> schedules.Add(id, result)
                 | Error msg -> eprintfn "Error: %s" msg
@@ -84,8 +93,6 @@ module App =
                     eprintfn "%03i: Agent=%A; Schedule=%A" x.Key x.Value.agentId x.Value.scheduleId
 
             eprintf "\nEnter command or 'help' to see available commands\n"
-            let scheduleActor = SchedulingAgent() 
-            let configActor = ConfigAgent()
             let rec loop cnt = 
                 let input = readCommand String.Empty
                 let inputList = input.Split(' ', StringSplitOptions.RemoveEmptyEntries) |> Array.toList
@@ -116,13 +123,6 @@ module App =
                     loop 0u
                 | "list"::_ -> 
                     displaySchedules()
-                    loop cnt
-                | "watch"::path::_ ->
-                    match File.Exists path with
-                    | false -> eprintfn "[ERROR] Unable to find [%s]" path
-                    | true -> 
-                        let result = FileInfo path |> configActor.Watch
-                        eprintfn "%A" result
                     loop cnt
                 | "config"::path::_ ->
                     match File.Exists path with

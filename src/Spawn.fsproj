@@ -8,6 +8,7 @@
     <Compile Include="AgentUtilities.fs" />
     <Compile Include="CommandLine.fs" />
     <Compile Include="Configuration.fs" />
+    <Compile Include="CourierAgent.fs" />
     <Compile Include="SchedulerAgent.fs" />
     <Compile Include="KafkaAgent.fs" />
     <Compile Include="Program.fs" />
