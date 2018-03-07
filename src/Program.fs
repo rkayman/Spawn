@@ -5,10 +5,9 @@ module App =
     open System
     open System.Collections.Generic
     open System.IO
-    open CommandLine
     open Configuration
-    open Scheduler
-    open Utilities
+    open Alarm
+    open Courier
 
     let readInput () =
         let rec readKey cmd =
@@ -39,17 +38,17 @@ module App =
 
     [<EntryPoint>]
     let main argv =
-        let printUsage() = eprintfn "%s" usageMsg
+        let printUsage() = eprintfn "%s" CommandLine.usageMsg
         
         let result = argv |> Array.toList |> CommandLine.parse
         match result with 
-        | Help -> printUsage()
+        | CommandLine.Help -> printUsage()
         
-        | Errors errors -> 
+        | CommandLine.Errors errors -> 
             errors.PrintErrors 
             printUsage()
 
-        | Options _ -> 
+        | CommandLine.Options _ -> 
             // TODO: create agents (actors) using configuration file
             // TODO: consider creating a parent agent to send 'kill' message to all child agents
             let showHelp = "\nhelp\t\tShow this help message \
@@ -60,37 +59,53 @@ module App =
                             \nconfig\t\tSet configuration \
                             \nquit\t\tQuit program\n"
 
-            let schedules = new Dictionary<uint32, ScheduleResult>()
+            let schedules = new Dictionary<uint32, ScheduledInfo>()
 
-            let configActor = ConfigAgent()
-            let courierActor = Courier.Kafka.KafkaCourierAgent() //CourierAgent()
-            let scheduleActor = SchedulerAgent() 
+            let configAgent = ConfigAgent()
+            let courierAgent = Courier.Kafka.KafkaCourierAgent()
+            let alarmAgent = AlarmAgent()
 
             let add1 x = x + 1u
 
-            let cancelAllSchedules() = 
-                for alarm in schedules.Values do alarm.CancelSchedule()
+            let formatTime (time: DateTimeOffset) = time.ToString("yyyyMMddTHH:mm:ss.fffzzz")
+
+            let cancelAllSchedules() =
+                for schedule in schedules.Values do schedule.CancelSchedule()
                 schedules.Clear()
 
-            //let printReceiver msg = printfn "[%s] %s" (DateTime.Now.ToString("yyyyMMddTHH:mm:ss.fffzzz")) msg
-            let forward (actor: Courier.CourierAgent<_>) msg = 
-                match msg |> actor.Send with
-                | Success result -> eprintfn "%A" result
-                | Error msg -> eprintfn "Error: %s" msg
+            let forwardPackage (courier: Courier.CourierAgent<_>) (waybill: ScheduledInfo) = 
+                let package = { courierId = courier.Id; activityId = waybill.configId; 
+                                causationId = waybill.scheduleId; correlationId = waybill.alarmId; 
+                                payload = waybill.payload }
+                match courier.Ship package with
+                | CourierResult.Shipped delivery -> 
+                    eprintfn "[%s] Shipped %A" (formatTime delivery.shippedAt) delivery.payload
+                | CourierResult.Stopped (at, msg) -> 
+                    eprintfn "[%s] Unexpected outcome: %s" (formatTime at) msg
+                | CourierResult.Error (msg, ex) -> 
+                    eprintfn "Error: %s\n%A" msg ex
 
-            let forwardToCourier = forward courierActor
+            let forwardToCourier = forwardPackage courierAgent
 
-            let makeSchedule id (actor: SchedulerAgent<string>) delay (words: string list) isRepeating = 
-                let msg = String.Join(' ', words) 
-                let ts = TimeSpan(0, 0, delay) 
-                let res = actor.ScheduleAlarm(forwardToCourier, msg, ts, isRepeating)
-                match res with
-                | Success result -> schedules.Add(id, result)
-                | Error msg -> eprintfn "Error: %s" msg
+            let makeAlarmInfo delay isRepeating =
+                let payload = { name = String100 "Tiger #1"; 
+                                sourceUrl = Uri("https://integration.tiger.pwc.com/"); 
+                                protocol = Https; feed = Atom; format = Xml; recordType = WorkRecord; 
+                                batchSize = 10u; maxRetries = 1us; frequencyInSeconds = 10u }
+                let cadence = if isRepeating then Repeating else Once
+                { frequency = (cadence, delay); payload = "Hello, World" }
+
+            let makeSchedule id (agent: AlarmAgent) delay isRepeating = 
+                let ts = TimeSpan(0, 0, delay)
+                let alarm = makeAlarmInfo ts isRepeating
+                match agent.ScheduleAlarm(alarm, forwardToCourier) with
+                | AlarmResult.Scheduled info -> schedules.Add(id, info)
+                | AlarmResult.Stopped (at, msg) -> eprintfn "[%s] Unexpected outcome: %s" (formatTime at) msg
+                | AlarmResult.Error (msg, ex) -> eprintfn "Error: %s\n%A" msg ex
 
             let displaySchedules() = 
                 for x in schedules do
-                    eprintfn "%03i: Scheduler = %A; Timer = %A" x.Key x.Value.agentId x.Value.scheduleId
+                    eprintfn "%03i: Alarm = %A; Schedule = %A" x.Key x.Value.alarmId x.Value.scheduleId
 
             eprintf "\nEnter command or 'help' to see available commands\n"
             let rec loop cnt = 
@@ -102,10 +117,10 @@ module App =
                     eprintfn "%s" showHelp
                     loop cnt
                 | "once"::delay::msgs -> 
-                    makeSchedule cnt scheduleActor (delay |> int32) msgs false
+                    makeSchedule cnt alarmAgent (delay |> int32) false
                     loop (add1 cnt)
                 | "repeat"::delay::msgs -> 
-                    makeSchedule cnt scheduleActor (delay |> int32) msgs true
+                    makeSchedule cnt alarmAgent (delay |> int32) true
                     loop (add1 cnt)
                 | "stop"::id::_ -> 
                     let id' = uint32 id
@@ -128,7 +143,7 @@ module App =
                     match File.Exists path with
                     | false -> eprintfn "[ERROR] Unable to find [%s]" path
                     | true -> 
-                        let result = FileInfo path |> configActor.Configure
+                        let result = FileInfo path |> configAgent.Configure
                         eprintfn "%A" result                        
                     loop cnt
                 | "quit"::_ -> 
