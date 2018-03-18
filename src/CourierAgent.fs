@@ -90,6 +90,9 @@ module Courier =
         member __.Ship(package) =
             let buildMessage ch = Ship (package, ch)
             agent.PostAndReply buildMessage
+
+        member __.Stop() =
+            agent.PostAndReply (Stop)
     
 
     module Kafka = 

@@ -66,7 +66,7 @@ module Configuration =
         format: Format;
         feed: Feed;
         recordType: RecordType;
-        frequencyInSeconds: uint32;
+        frequencyInSeconds: int;
         batchSize: uint32;
         maxRetries: uint16
     } with static member FromJson (_: DataSource) = json {
@@ -85,7 +85,7 @@ module Configuration =
                      format = fmt |> format; 
                      feed = f |> feed; 
                      recordType = rt |> recordType; 
-                     frequencyInSeconds = fis |> liftNumber |> uint32; 
+                     frequencyInSeconds = fis |> liftNumber |> int; 
                      batchSize = b |> liftNumber |> uint32; 
                      maxRetries = mr |> liftNumber |> uint16 }
     }
@@ -108,36 +108,43 @@ module Configuration =
 
 
     type ConfigAgentResponse = 
-        | Configured of Guid * string
+        | ConfigRead of Guid * Configuration
+        | Stopped of DateTimeOffset * string
+        | Error of string * Exception option
 
     type private ConfigAgentMessage = 
         //| WatchFile of FileInfo * ConfigAgentResponse ResultMessage AsyncReplyChannel
-        // | WatchFolder of DirectoryInfo * ConfigurationManagerResponse ResultMessage AsyncReplyChannel
-        | Configure of FileInfo * ConfigAgentResponse ResultMessage AsyncReplyChannel
-        | Stop
+        //| WatchFolder of DirectoryInfo * ConfigurationManagerResponse ResultMessage AsyncReplyChannel
+        | ReadConfig of FileInfo * ConfigAgentResponse AsyncReplyChannel
+        | Stop of ConfigAgentResponse AsyncReplyChannel
 
     type ConfigAgent() = 
 
         let agentId = Guid.NewGuid()
 
-        let configure (fi: FileInfo) 
-                      (ch: ConfigAgentResponse ResultMessage AsyncReplyChannel) = 
-            let config = fi |> Configuration.ReadConfig
-            let response = sprintf "%A" config
-            printfn "%s" response
-            Success (Configured (agentId, response)) |> ch.Reply
-
         let agent = Agent.Start (fun inbox -> 
             let rec loop () = async {
                 let! msg = inbox.Receive()
                 match msg with
-                | Configure (cfg, ch) -> configure cfg ch; return! loop ()
-                | Stop -> return! async.Zero()
+                | ReadConfig (file, ch) -> 
+                    let config = file |> Configuration.ReadConfig
+                    printfn "%A" config
+                    ConfigRead (agentId, config) |> ch.Reply
+                    return! loop ()
+
+                | Stop ch ->
+                    let response = sprintf "Stopped with %i requests in queue" inbox.CurrentQueueLength
+                    Stopped (DateTimeOffset.Now, response) |> ch.Reply
+                    return! async.Zero()
+
             }
             loop ())
 
         member __.Id with get() = agentId
         
-        member __.Configure(fi: FileInfo) =
-            let buildMessage chan = Configure (fi, chan)
+        member __.ReadConfig(fi: FileInfo) =
+            let buildMessage chan = ReadConfig (fi, chan)
             agent.PostAndReply buildMessage
+
+        member __.Stop() =
+            agent.PostAndReply (Stop)

@@ -37,7 +37,3 @@ module Utilities =
               correlationId = Guid.Empty;
               causationId = Guid.Empty;
               content = content }
-
-    type ResultMessage<'T> = 
-        | Success of 'T
-        | Error of string

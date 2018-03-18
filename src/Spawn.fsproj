@@ -10,6 +10,7 @@
     <Compile Include="Configuration.fs" />
     <Compile Include="CourierAgent.fs" />
     <Compile Include="AlarmAgent.fs" />
+    <Compile Include="WorkflowAgent.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
