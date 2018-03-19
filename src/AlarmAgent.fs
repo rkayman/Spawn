@@ -36,7 +36,7 @@ module Alarm =
     type AlarmResult<'T> = 
         | Scheduled of Alarm<'T>
         | ScheduleCancelled of DateTimeOffset * Guid * string
-        | SchedulesListed of Alarm<'T> list
+        | SchedulesListed of Guid * Alarm<'T> list
         | Stopped of DateTimeOffset * string
         | Error of string * Exception option
 
@@ -117,7 +117,7 @@ module Alarm =
 
                 | ListSchedules ch ->
                     let lst = alarms |> Map.toSeq |> Seq.map snd |> Seq.toList
-                    SchedulesListed lst |> ch.Reply
+                    (agentId, lst) |> SchedulesListed |> ch.Reply
 
                 | Stop ch -> 
                     let msg = sprintf "Stopping Alarm {%A}; Cancelling %d schedules; %i Messages remaining in queue." 
