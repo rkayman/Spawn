@@ -11,24 +11,24 @@ module Workflow =
     
     type WorkflowResult<'T> = 
         | ConfigLoaded of Configuration
-        | ScheduleList of Map<int, Alarm<'T>>
-        | ScheduleStopped of DateTimeOffset * string
+        | Alarms of (Guid * Alarm<'T> list) list
+        | AlarmStopped of DateTimeOffset * string
         | WorkflowStopped of DateTimeOffset * string
 
     type WorkflowMessage<'T> = 
         | LoadConfig of FileInfo * WorkflowResult<'T> AsyncReplyChannel
-        | ListSchedules of WorkflowResult<'T> AsyncReplyChannel
-        | StopSchedule of string * Guid option * WorkflowResult<'T> AsyncReplyChannel
+        | ListAlarms of WorkflowResult<'T> AsyncReplyChannel
+        | StopAlarm of string * Guid option * WorkflowResult<'T> AsyncReplyChannel
         | StopWorkflow of WorkflowResult<'T> AsyncReplyChannel
 
 
-    let formatTime (time: DateTimeOffset) = time.ToString("yyyyMMddTHH:mm:ss.fffzzz")
+    let private formatTime (time: DateTimeOffset) = time.ToString("yyyyMMddTHH:mm:ss.fffzzz")
 
-    let configAgent = ConfigAgent()
+    let private configAgent = ConfigAgent()
 
-    let courierAgent = Kafka.KafkaCourierAgent()
+    let private courierAgent = Kafka.KafkaCourierAgent()
 
-    module Alarm = 
+    module private Alarm = 
 
         let mutable agents: Map<string, AlarmAgent<DataSource>> = Map.empty
 
@@ -92,20 +92,18 @@ module Workflow =
                     loop lst'
             loop (Array.toList cfg.dataSource)
 
-        let querySchedules (agent: AlarmAgent<_>) =
+        let getSchedules (agent: AlarmAgent<_>) =
             match agent.ListSchedules() with
-            | AlarmResult.SchedulesListed lst -> lst
+            | AlarmResult.Alarms (id, lst) -> id, lst
             | AlarmResult.Error (msg, ex) -> failwithf "Error: %s\n%A" msg ex
             | e -> failwithf "Unexpected outcome: %A" e
 
-        let queryAllSchedules () =
-            agents |> Map.toSeq 
-                   |> Seq.collect (snd >> querySchedules)
-                   |> Seq.indexed
-                   |> Map.ofSeq
-        
+        let getAllSchedules () =
+            agents |> Map.toList
+                   |> List.map (snd >> getSchedules)
 
-    let forwardPackage (courier: CourierAgent<_>) (waybill: Alarm<_>) =
+
+    let private forwardPackage (courier: CourierAgent<_>) (waybill: Alarm<_>) =
         let package = { courierId = courier.Id; activityId = waybill.configId; 
                         causationId = waybill.alarmId; correlationId = waybill.agentId; 
                         payload = waybill.payload }
@@ -117,7 +115,7 @@ module Workflow =
         | CourierResult.Error (msg, ex) -> 
             eprintfn "Error: %s\n%A" msg ex
 
-    let forwardToCourier = forwardPackage courierAgent
+    let private forwardToCourier = forwardPackage courierAgent
 
     type WorkflowAgent() = 
 
@@ -138,18 +136,17 @@ module Workflow =
                         eprintfn "[%s] Unexpected outcome: %s" (formatTime at) msg
                     return! loop()
 
-                | ListSchedules ch ->
-                    // TODO: query alarm agents to get schedules, combine and reply
-                    Alarm.queryAllSchedules () |> ScheduleList |> ch.Reply
+                | ListAlarms ch ->
+                    Alarm.getAllSchedules () |> Alarms |> ch.Reply
                     return! loop ()
 
-                | StopSchedule (domain, id, ch) ->
+                | StopAlarm (domain, id, ch) ->
                     let msg = match id with
                               | Some guid -> 
                                     Alarm.stopAlarm domain guid
                                     sprintf "Stopped schedule %A serviced in alarm with domain %s." guid domain
                               | None -> Alarm.stopAlarms (); "All alarm schedules stopped"
-                    ch.Reply <| ScheduleStopped (DateTimeOffset.Now, msg)
+                    (DateTimeOffset.Now, msg) |> AlarmStopped |> ch.Reply
                     return! loop()
                 
                 | StopWorkflow ch ->
@@ -160,7 +157,7 @@ module Workflow =
                     let at = DateTimeOffset.Now
                     let msg = sprintf "Stopped workflow at %s with %i messages in queue"
                                 (formatTime at) inbox.CurrentQueueLength
-                    WorkflowStopped (at, msg) |> ch.Reply
+                    (at, msg) |> WorkflowStopped |> ch.Reply
                     return! async.Zero()
                 
             }
@@ -172,10 +169,10 @@ module Workflow =
             let buildMessage replyChannel = LoadConfig (file, replyChannel)
             agent.PostAndReply buildMessage
 
-        member __.ListSchedules() = agent.PostAndReply (ListSchedules)
+        member __.ListAlarms() = agent.PostAndReply (ListAlarms)
 
         member __.StopSchedule(domain, ?alarmId) = 
-            let buildMessage replyChannel = StopSchedule (domain, alarmId, replyChannel)
+            let buildMessage replyChannel = StopAlarm (domain, alarmId, replyChannel)
             agent.PostAndReply buildMessage
         
         member __.StopWorkflow() = agent.PostAndReply (StopWorkflow)

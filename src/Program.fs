@@ -3,7 +3,7 @@
 module App =
 
     open System
-    open System.IO
+    open Workflow
 
     module Console =
         let readInput () =
@@ -37,6 +37,8 @@ module App =
     [<EntryPoint>]
     let main argv =
         let printUsage() = eprintfn "%s" CommandLine.usageMsg
+
+        let controller = Workflow.WorkflowAgent()
         
         let result = argv |> Array.toList |> CommandLine.parse
         match result with 
@@ -47,61 +49,78 @@ module App =
             printUsage()
 
         // TODO: do not ignore options parameter; read options when starting up
-        | CommandLine.Options _ ->
-            let showHelp = "\nhelp\t\tShow this help message \
-                            \nonce\t\tCreate a one-time timer \
-                            \nrepeat\t\tCreate a repeating timer \
-                            \nstop\t\tStop schedule \
-                            \nlist\t\tList schedules \
-                            \nconfig\t\tSet configuration \
-                            \nquit\t\tQuit program\n"
+        | CommandLine.Options options ->
+            match options.file with
+            | None -> printUsage()
+            | Some file ->
+                match controller.LoadConfig(file) with
+                | WorkflowResult.ConfigLoaded config -> eprintfn "Using configuration:\n\t%A" config
+                | ur -> eprintfn "Unexected result: %A" ur
+                Console.readCommand String.Empty |> ignore
+                controller.StopWorkflow() |> eprintfn "%A"
 
-            let displaySchedules() = 
-                for x in schedules do
-                    eprintfn "%03i: Alarm = %A; Schedule = %A" x.Key x.Value.alarmId x.Value.scheduleId
+        // | CommandLine.Options _ ->
+        //     let showHelp = "\nhelp\t\tShow this help message \
+        //                     \nonce\t\tCreate a one-time timer \
+        //                     \nrepeat\t\tCreate a repeating timer \
+        //                     \nstop\t\tStop schedule \
+        //                     \nlist\t\tList schedules \
+        //                     \nconfig\t\tSet configuration \
+        //                     \nquit\t\tQuit program\n"
 
-            eprintf "\nEnter command or 'help' to see available commands\n"
-            let rec loop () =
-                let input = Console.readCommand String.Empty
-                let inputList = input.Split(' ', StringSplitOptions.RemoveEmptyEntries) |> Array.toList
-                match inputList with 
-                | [] -> loop ()
-                | "help"::_ -> 
-                    eprintfn "%s" showHelp
-                    loop ()
-                | "stop"::id::_ -> 
-                    let id' = uint32 id
-                    try
-                        let schedule = schedules.[id']
-                        schedule.CancelSchedule()
-                        schedules.Remove(id') |> ignore
-                        displaySchedules()
-                    with
-                    | ex -> eprintfn "[ERROR] Invalid alarm id %s\n%A" id ex
-                    loop ()
-                | "stop"::_ -> 
-                    cancelAllSchedules()
-                    displaySchedules()
-                    loop ()
-                | "list"::_ -> 
-                    displaySchedules()
-                    loop ()
-                | "config"::path::_ ->
-                    match File.Exists path with
-                    | false -> eprintfn "[ERROR] Unable to find [%s]" path
-                    | true -> 
-                        let result = FileInfo path |> configAgent.Configure
-                        eprintfn "%A" result                        
-                    loop ()
-                | "quit"::_ -> 
-                    eprintfn "\n...quitting...cancelling all schedules..."
-                    cancelAllSchedules()
-                | _ -> 
-                    eprintfn "\n[ERROR] Unknown command"
-                    eprintfn "%s" showHelp
-                    loop ()
-            loop ()
+        //     let displayAlarms() = 
+        //         for x in schedules do
+        //             eprintfn "%03i: Agent = %A; Alarm = %A" x.Key x.Value.alarmId x.Value.scheduleId
 
-            eprintfn "done\n"
+        //     eprintf "\nEnter command or 'help' to see available commands\n"
+        //     let rec loop () =
+        //         let input = Console.readCommand String.Empty
+        //         let inputList = input.Split(' ', StringSplitOptions.RemoveEmptyEntries) |> Array.toList
+        //         match inputList with 
+        //         | [] -> loop ()
+                
+        //         | "help"::_ -> 
+        //             eprintfn "%s" showHelp
+        //             loop ()
+                
+        //         | "stop"::id::_ -> 
+        //             let id' = uint32 id
+        //             try
+        //                 let schedule = schedules.[id']
+        //                 schedule.CancelSchedule()
+        //                 schedules.Remove(id') |> ignore
+        //                 displayAlarms()
+        //             with
+        //             | ex -> eprintfn "[ERROR] Invalid alarm id %s\n%A" id ex
+        //             loop ()
+                
+        //         | "stop"::_ -> 
+        //             cancelAllSchedules()
+        //             displayAlarms()
+        //             loop ()
+                
+        //         | "list"::_ -> 
+        //             displayAlarms()
+        //             loop ()
+                
+        //         | "config"::path::_ ->
+        //             match File.Exists path with
+        //             | false -> eprintfn "[ERROR] Unable to find [%s]" path
+        //             | true -> 
+        //                 let result = FileInfo path |> configAgent.Configure
+        //                 eprintfn "%A" result                        
+        //             loop ()
+                
+        //         | "quit"::_ -> 
+        //             eprintfn "\n...quitting...cancelling all schedules..."
+        //             cancelAllSchedules()
+                
+        //         | _ -> 
+        //             eprintfn "\n[ERROR] Unknown command"
+        //             eprintfn "%s" showHelp
+        //             loop ()
+        //     loop ()
+
+        //     eprintfn "done\n"
 
         0 // return an integer exit code

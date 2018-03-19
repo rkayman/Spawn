@@ -6,7 +6,7 @@
         "format": "xml",
         "feed": "atom",
         "recordType": "workrecord",
-        "frequencyInSeconds": "10",
+        "frequencyInSeconds": "3",
         "batchSize": "100",
         "maxRetries": "0"
     },
@@ -17,7 +17,7 @@
         "format": "xml",
         "feed": "atom",
         "recordType": "client",
-        "frequencyInSeconds": "30",
+        "frequencyInSeconds": "4",
         "batchSize": "100",
         "maxRetries": "1"
     }]

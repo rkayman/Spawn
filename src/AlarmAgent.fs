@@ -35,16 +35,16 @@ module Alarm =
 
     type AlarmResult<'T> = 
         | Scheduled of Alarm<'T>
-        | ScheduleCancelled of DateTimeOffset * Guid * string
-        | SchedulesListed of Guid * Alarm<'T> list
+        | Cancelled of DateTimeOffset * Guid * string
+        | Alarms of Guid * Alarm<'T> list
         | Stopped of DateTimeOffset * string
         | Error of string * Exception option
 
     type private AlarmMessage<'T> = 
         | Schedule of AlarmSettings<'T> * AlarmResult<'T> AsyncReplyChannel
+        | Cancel of Guid option * AlarmResult<'T> AsyncReplyChannel
+        | List of AlarmResult<'T> AsyncReplyChannel
         | Stop of AlarmResult<'T> AsyncReplyChannel
-        | CancelSchedule of Guid option * AlarmResult<'T> AsyncReplyChannel
-        | ListSchedules of AlarmResult<'T> AsyncReplyChannel
 
     type AlarmAgent<'T>() = 
         let agentId = Guid.NewGuid() 
@@ -108,16 +108,16 @@ module Alarm =
                     | ex ->  Error (ex.Message, Some ex) |> ch.Reply
                     return! loop ()
 
-                | CancelSchedule (id, ch) -> 
+                | Cancel (id, ch) -> 
                     let guid, msg = match id with
                                     | Some guid -> stopAlarm guid; (guid, (sprintf "Schedule %A stopped" guid))
                                     | None -> stopAllAlarms (); (Guid.Empty, ("All schedules stopped"))
-                    ch.Reply <| ScheduleCancelled (DateTimeOffset.Now, guid, msg)
+                    ch.Reply <| Cancelled (DateTimeOffset.Now, guid, msg)
                     return! loop ()
 
-                | ListSchedules ch ->
+                | List ch ->
                     let lst = alarms |> Map.toSeq |> Seq.map snd |> Seq.toList
-                    (agentId, lst) |> SchedulesListed |> ch.Reply
+                    (agentId, lst) |> Alarms |> ch.Reply
 
                 | Stop ch -> 
                     let msg = sprintf "Stopping Alarm {%A}; Cancelling %d schedules; %i Messages remaining in queue." 
@@ -138,8 +138,8 @@ module Alarm =
             agent.PostAndReply (Stop)
 
         member __.CancelSchedule(?scheduleId) = 
-            let buildMessage replyChannel = CancelSchedule (scheduleId, replyChannel)
+            let buildMessage replyChannel = Cancel (scheduleId, replyChannel)
             agent.PostAndReply buildMessage
 
         member __.ListSchedules() = 
-            agent.PostAndReply (ListSchedules)
+            agent.PostAndReply (List)
