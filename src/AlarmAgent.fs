@@ -3,7 +3,6 @@ namespace Amber.Spawn
 module Alarm = 
 
     open System
-    open System.Collections.Generic
     open System.Threading
     open Utilities
 
@@ -24,7 +23,7 @@ module Alarm =
               member __.ActivityId with get() = this.configId 
               member __.CausationId with get() = this.alarmId 
               member __.CorrelationId with get() = this.agentId }
-        static member Create<'T>(idAgent, idSchedule, idConfig, tokenCancel, (options: AlarmSettings<'T>)) =
+        static member Build<'T>(idAgent, idSchedule, idConfig, tokenCancel, (options: AlarmSettings<'T>)) =
             { agentId = idAgent; alarmId = idSchedule; 
               configId = idConfig; cancelToken = tokenCancel; 
               frequency = options.frequency; payload = options.payload }
@@ -50,7 +49,7 @@ module Alarm =
     type AlarmAgent<'T>() = 
         let agentId = Guid.NewGuid() 
 
-        let alarms = new Dictionary<Guid, Alarm<'T>>()
+        let mutable alarms: Map<Guid, Alarm<'T>> = Map.empty
 
         let timer repeat delay (handler: AlarmHandler<'T>) (args: Alarm<'T>) =
             let rec loop time (ct: CancellationTokenSource) = async {
@@ -73,27 +72,27 @@ module Alarm =
             | Repeating -> repeat
 
         let stopAlarm id = 
-            match alarms.TryGetValue id with
-            | true, schedule -> schedule.CancelSchedule()   // do not remove, might want to resume
+            match alarms.TryFind id with
+            | Some alarm -> alarm.CancelSchedule()
             | _ -> invalidArg "id" (sprintf "Schedule [%A] does not exist" id)
 
         let stopAllAlarms() = 
-            for schedule in alarms.Values do schedule.CancelSchedule()
-            alarms.Clear()
+            alarms |> Map.iter (fun _ a -> a.CancelSchedule())
+            alarms <- Map.empty
 
-        let createAlarm options =
+        let buildAlarm options =
             let cts = new CancellationTokenSource()
             let scheduleId = Guid.NewGuid()
             let configId = Guid.NewGuid()
-            Alarm.Create(agentId, scheduleId, configId, cts, options)
+            Alarm.Build(agentId, scheduleId, configId, cts, options)
 
         let scheduleAlarm options =
             let (cadence, ts) = options.frequency
             let handler = options.handler
             let worker = cadenceWorker cadence
             let delay = int ts.TotalMilliseconds
-            let alarm = createAlarm options
-            alarms.Add(alarm.alarmId, alarm)
+            let alarm = buildAlarm options
+            alarms <- alarms.Add(alarm.alarmId, alarm)
             Async.Start (worker delay handler alarm)
             alarm
 
@@ -117,7 +116,7 @@ module Alarm =
                     return! loop ()
 
                 | ListSchedules ch ->
-                    let lst = alarms |> seq<_> |> Seq.map (fun kvp -> kvp.Value) |> List.ofSeq
+                    let lst = alarms |> Map.toSeq |> Seq.map snd |> Seq.toList
                     SchedulesListed lst |> ch.Reply
 
                 | Stop ch -> 
