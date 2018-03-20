@@ -39,6 +39,10 @@ module App =
         let printUsage() = eprintfn "%s" CommandLine.usageMsg
 
         let controller = Workflow.WorkflowAgent()
+
+        let waitForCommandToQuit () =
+            Console.readCommand String.Empty |> ignore      // quit on any command
+            controller.StopWorkflow() |> eprintfn "%A"
         
         match CommandLine.parse argv with 
         | CommandLine.Help -> printUsage()
@@ -54,8 +58,8 @@ module App =
                 match controller.LoadConfig(file) with
                 | WorkflowResult.ConfigLoaded config -> eprintfn "Using configuration:\n\t%A" config
                 | ur -> eprintfn "Unexected result: %A" ur
-                Console.readCommand String.Empty |> ignore
-                controller.StopWorkflow() |> eprintfn "%A"
+
+                waitForCommandToQuit ()
 
         // | CommandLine.Options _ ->
         //     let showHelp = "\nhelp\t\tShow this help message \
