@@ -33,7 +33,7 @@ module CommandLine =
 
     type OptionsResult = Help | Options of Options | Errors of OptionErrors
 
-    let rec parseRec args options =
+    let rec parseRec options args =
         match args with
         | [] -> 
             match options with
@@ -48,7 +48,7 @@ module CommandLine =
             match args' with
             | x::args'' ->
                 if File.Exists(x) then 
-                    parseRec args'' { options with file = Some (FileInfo x) }
+                    args'' |> parseRec { options with file = Some (FileInfo x) }
                 else 
                     let err = { argument = File; 
                                 message = "Unable to find configuration file." } 
@@ -63,7 +63,7 @@ module CommandLine =
             | x::args'' ->
                 try
                     let log = FileInfo x
-                    parseRec args'' { options with log = Some log }
+                    args'' |> parseRec { options with log = Some log }
                 with
                 | ex -> 
                     let err = { argument = Log; message = ex.Message }
@@ -78,4 +78,4 @@ module CommandLine =
 
     let parse argv = 
         let options = { file = None; log = None }
-        parseRec argv options 
+        argv |> Array.toList |> parseRec options 

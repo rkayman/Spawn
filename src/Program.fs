@@ -40,15 +40,13 @@ module App =
 
         let controller = Workflow.WorkflowAgent()
         
-        let result = argv |> Array.toList |> CommandLine.parse
-        match result with 
+        match CommandLine.parse argv with 
         | CommandLine.Help -> printUsage()
         
         | CommandLine.Errors errors -> 
             errors.PrintErrors 
             printUsage()
 
-        // TODO: do not ignore options parameter; read options when starting up
         | CommandLine.Options options ->
             match options.file with
             | None -> printUsage()
