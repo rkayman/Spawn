@@ -2,12 +2,14 @@ namespace Amber.Spawn
 
 [<AutoOpen>]
 module ConsoleHost =
+    // Translated to F# from example at...
+    // https://stackoverflow.com/questions/41454563/how-to-write-a-linux-daemon-with-net-core?noredirect=1&lq=1
     
     open System
     open System.Threading
     open System.Threading.Tasks
 
-    let waitForTokenShutdownAsync (token: CancellationToken) = async {
+    let private waitForTokenShutdownAsync (token: CancellationToken) = async {
         let waitForStop = new TaskCompletionSource<obj>()
         token.Register((fun (x: obj) ->
             let tcs = x :?> TaskCompletionSource<obj>
@@ -22,8 +24,8 @@ module ConsoleHost =
             | true -> ()
             | false -> 
                 match shutdownMessage with
-                | None -> ()
                 | Some msg -> printfn "%s" msg
+                | None -> ()
 
                 try
                     cts.Cancel()
@@ -32,6 +34,45 @@ module ConsoleHost =
 
             mre.Wait()
 
+        let shutdownOnCancel (eventArgs: ConsoleCancelEventArgs) =
+            do shutdown ()
+            eventArgs.Cancel <- true
+
         do
             AppDomain.CurrentDomain.ProcessExit.Add shutdown
-            Console.CancelKeyPress.Add(fun eventArgs -> do shutdown (); eventArgs.Cancel <- true)
+            Console.CancelKeyPress.Add shutdownOnCancel
+
+    let private waitWithMessageAsync (token: CancellationToken) 
+                                     (shutdownMessage: string option) = async {
+        match shutdownMessage with
+        | Some msg -> printfn "%s" msg
+        | None -> ()
+        
+        do! waitForTokenShutdownAsync token
+    }
+
+    let waitForShutdownAsync (cancelToken: CancellationToken option) = async {
+        let token = cancelToken |> Option.defaultValue CancellationToken.None
+        let mre = new ManualResetEventSlim(false)
+        use cts = CancellationTokenSource.CreateLinkedTokenSource(token)
+        do attachCtrlcSigtermShutdown cts mre None
+        do! waitForTokenShutdownAsync cts.Token
+        mre.Set()
+    }
+
+    let waitAsync (cancelToken: CancellationToken option) = async {
+        let token = cancelToken |> Option.defaultValue CancellationToken.None
+        if token.CanBeCanceled then
+            do! waitWithMessageAsync token None
+        else
+            let mre = new ManualResetEventSlim(false)
+            use cts = new CancellationTokenSource()
+            do attachCtrlcSigtermShutdown cts mre (Some "Application is shutting down...")
+            do! waitWithMessageAsync cts.Token (Some "Application running. Press Ctrl-C to shut down.")
+            mre.Set()
+    }
+
+    let wait () = waitAsync None
+
+    let waitForShutdown () = waitForShutdownAsync None
+    
