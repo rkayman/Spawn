@@ -9,12 +9,14 @@ module ConsoleHost =
     open System.Threading
     open System.Threading.Tasks
 
-    let private waitForTokenShutdownAsync (token: CancellationToken) = async {
+    let private waitForTokenShutdownAsync (token: CancellationToken) =
         let waitForStop = new TaskCompletionSource<obj>()
-        token.Register((fun (x: obj) ->
+        let action (x: obj) =
             let tcs = x :?> TaskCompletionSource<obj>
-            tcs.TrySetResult(null) |> ignore), waitForStop) |> ignore
-    }
+            tcs.TrySetResult(null) |> ignore
+
+        token.Register(action, waitForStop) |> ignore
+        Async.AwaitTask waitForStop.Task
 
     let private attachCtrlcSigtermShutdown (cts: CancellationTokenSource) 
                                            (mre: ManualResetEventSlim) 
@@ -48,7 +50,7 @@ module ConsoleHost =
         | Some msg -> printfn "%s" msg
         | None -> ()
         
-        do! waitForTokenShutdownAsync token
+        do! (waitForTokenShutdownAsync token |> Async.Ignore)
     }
 
     let waitForShutdownAsync (cancelToken: CancellationToken option) = async {
@@ -56,7 +58,7 @@ module ConsoleHost =
         let mre = new ManualResetEventSlim(false)
         use cts = CancellationTokenSource.CreateLinkedTokenSource(token)
         do attachCtrlcSigtermShutdown cts mre None
-        do! waitForTokenShutdownAsync cts.Token
+        do! (waitForTokenShutdownAsync cts.Token |> Async.Ignore)
         mre.Set()
     }
 
@@ -72,7 +74,7 @@ module ConsoleHost =
             mre.Set()
     }
 
-    let wait () = waitAsync None
+    let wait () = waitAsync None |> Async.RunSynchronously
 
-    let waitForShutdown () = waitForShutdownAsync None
+    let waitForShutdown () = waitForShutdownAsync None |> Async.RunSynchronously
     

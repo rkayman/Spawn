@@ -65,7 +65,7 @@ module App =
                 //waitForCommandToQuit ()
                 let stopWorkflow _ = controller.StopWorkflow() |> eprintfn "%A"
                 AppDomain.CurrentDomain.ProcessExit.Add stopWorkflow
-                waitForShutdown () |> Async.RunSynchronously
+                waitForShutdown ()
                 
         // INFO: launchd and systemd can restart services too quickly sometimes
         // INFO: Slow down exit to prevent a restart that is too quick
