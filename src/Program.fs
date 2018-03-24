@@ -36,14 +36,9 @@ module App =
 
     [<EntryPoint>]
     let main argv =
-        let slowStart = DateTimeOffset.Now
         let printUsage() = eprintfn "%s" CommandLine.usageMsg
 
         let controller = Workflow.WorkflowAgent()
-
-        let waitForCommandToQuit () =
-            Console.readCommand String.Empty |> ignore      // quit on any command
-            controller.StopWorkflow() |> eprintfn "%A"
         
         match CommandLine.parse argv with 
         | CommandLine.Help -> printUsage()
@@ -62,19 +57,10 @@ module App =
                 | ur -> 
                     eprintfn "Unexected result: %A" ur
 
-                //waitForCommandToQuit ()
                 let stopWorkflow _ = controller.StopWorkflow() |> eprintfn "%A"
                 AppDomain.CurrentDomain.ProcessExit.Add stopWorkflow
                 waitForShutdown ()
                 
-        // INFO: launchd and systemd can restart services too quickly sometimes
-        // INFO: Slow down exit to prevent a restart that is too quick
-        let tenSeconds = TimeSpan(0, 0, 10)
-        let diff = tenSeconds - (DateTimeOffset.Now - slowStart)
-        match diff.Seconds with
-        | x when x < 0 -> ()
-        | _ -> System.Threading.Thread.Sleep(diff)
-
         // | CommandLine.Options _ ->
         //     let showHelp = "\nhelp\t\tShow this help message \
         //                     \nonce\t\tCreate a one-time timer \

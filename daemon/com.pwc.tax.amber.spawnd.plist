@@ -3,21 +3,21 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.pwc.tax.amber.spawn</string>
+    <string>com.pwc.tax.amber.spawnd</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/local/libexec/spawn/Spawn</string>
+        <string>/usr/local/libexec/spawn/spawnd</string>
         <string>--config</string>
-        <string>/etc/spawn/amberPipe-atom.json</string>
+        <string>/etc/spawnd/amberPipe-atom.json</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/var/log/spawnout.log</string>
+    <string>/var/log/spawnd-out.log</string>
     <key>StandardErrorPath</key>
-    <string>/var/log/spawnerr.log</string>
+    <string>/var/log/spawnd-err.log</string>
     <key>Debug</key>
     <true/>
 </dict>
