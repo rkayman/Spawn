@@ -128,7 +128,6 @@ module Configuration =
                 match msg with
                 | ReadConfig (file, ch) -> 
                     let config = file |> Configuration.ReadConfig
-                    printfn "%A" config
                     ConfigRead (agentId, config) |> ch.Reply
                     return! loop ()
 
