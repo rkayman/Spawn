@@ -84,12 +84,13 @@ module Workflow =
 
         let create (agent: AlarmAgent<_>) settings =
             match agent.Schedule(settings) with
-            | AlarmResult.Scheduled a -> 
+            | AlarmResult.Scheduled (at, a) -> 
                 // TODO: log **info**
-                eprintfn "Alarm set {%A} with schedule {%A}" a.agentId a.alarmId
-            | AlarmResult.Error (msg, ex) -> 
+                eprintfn "[%s] Alarm set {%A} with schedule {%A}" 
+                         (formatTime at) a.agentId a.alarmId
+            | AlarmResult.Error (at, msg, ex) -> 
                 // TODO: log **error**
-                eprintfn "Error: %s\n%A" msg ex
+                eprintfn "[%s] Error: %s\n%A" (formatTime at) msg ex
             | x -> 
                 // TODO: log **warning**
                 eprintfn "Unexpected outcome: %A" x
@@ -107,9 +108,9 @@ module Workflow =
         let getSchedules (agent: AlarmAgent<_>) =
             match agent.ListSchedules() with
             | AlarmResult.Alarms (id, lst) -> id, lst
-            | AlarmResult.Error (msg, ex) -> 
+            | AlarmResult.Error (at, msg, ex) -> 
                 // TODO: log **error**
-                failwithf "Error: %s\n%A" msg ex
+                failwithf "[%s] Error: %s\n%A" (formatTime at) msg ex
             | e -> 
                 // TODO: log **warning**
                 failwithf "Unexpected outcome: %A" e
@@ -120,19 +121,20 @@ module Workflow =
 
 
     let private forwardPackage (courier: CourierAgent<_>) (waybill: Alarm<_>) =
-        let package = { courierId = courier.Id; activityId = waybill.configId; 
-                        causationId = waybill.alarmId; correlationId = waybill.agentId; 
-                        payload = waybill.payload }
+        // TODO: implement activity id that ties back to configuration item
+        let package = { messageId = Guid.NewGuid(); agentId = courier.Id; 
+                        activityId = waybill.alarmId; causationId = waybill.alarmId; 
+                        correlationId = waybill.agentId; payload = waybill.payload }
         match courier.Ship package with
-        | CourierResult.Shipped delivery -> 
+        | CourierResult.Shipped (_, delivery) -> 
             // TODO: log **info**
             eprintfn "[%s] Shipped %A" (formatTime delivery.shippedAt) delivery.payload
         | CourierResult.Stopped (at, msg) -> 
             // TODO: log **warning**
             eprintfn "[%s] Unexpected outcome: %s" (formatTime at) msg
-        | CourierResult.Error (msg, ex) -> 
+        | CourierResult.Error (at, msg, ex) -> 
             // TODO: log **error**
-            eprintfn "Error: %s\n%A" msg ex
+            eprintfn "[%s] Error: %s\n%A" (formatTime at) msg ex
 
     let private forwardToCourier = forwardPackage courierAgent
 

@@ -6,7 +6,8 @@ module Courier =
     open Utilities
 
     type PackageInfo<'T> = {
-        courierId: Guid;
+        agentId: Guid;
+        messageId: Guid;
         activityId: Guid;
         correlationId: Guid;
         causationId: Guid;
@@ -14,13 +15,15 @@ module Courier =
     } with 
         member this.GetMessageContext() = 
             { new IMessageContext with
-                member __.AgentId with get() = this.courierId
+                member __.AgentId with get() = this.agentId
+                member __.MessageId with get() = this.messageId
                 member __.ActivityId with get() = this.activityId
                 member __.CausationId with get() = this.causationId
                 member __.CorrelationId with get() = this.correlationId }
 
     type DeliveryInfo<'T> = {
-        courierId: Guid;
+        agentId: Guid;
+        messageId: Guid;
         activityId: Guid;
         correlationId: Guid;
         causationId: Guid;
@@ -30,15 +33,16 @@ module Courier =
     } with
         member this.GetMessageContext() = 
             { new IMessageContext with
-                member __.AgentId with get() = this.courierId
+                member __.AgentId with get() = this.agentId
+                member __.MessageId with get() = this.messageId
                 member __.ActivityId with get() = this.activityId
                 member __.CausationId with get() = this.causationId
                 member __.CorrelationId with get() = this.correlationId }
 
     type CourierResult<'T> =
-        | Shipped of DeliveryInfo<'T>
+        | Shipped of DateTimeOffset * DeliveryInfo<'T>
         | Stopped of DateTimeOffset * string
-        | Error of string * Exception option
+        | Error of DateTimeOffset * string * Exception option
 
     type CourierMessage<'T> =
         | Ship of PackageInfo<'T> * 'T CourierResult AsyncReplyChannel
@@ -47,7 +51,8 @@ module Courier =
     let formatTime (time: DateTimeOffset) = time.ToString("yyyyMMddTHH:mm:ss.fffzzz")
 
     let deliverPackage agentId shipTime msg (pkg: PackageInfo<'T>) = 
-        { courierId = agentId;
+        { agentId = agentId;
+          messageId = Guid.NewGuid();
           activityId = pkg.activityId;
           causationId = pkg.causationId;
           correlationId = pkg.correlationId;
@@ -59,7 +64,7 @@ module Courier =
         let deliveryTime = DateTimeOffset.Now
         printfn "[%s] %A" (formatTime deliveryTime) package.payload
         let msg = sprintf "Delivered at: %s" (formatTime deliveryTime)
-        Shipped (package |> deliverPackage agentId deliveryTime msg)
+        Shipped (now(), package |> deliverPackage agentId deliveryTime msg)
 
     type CourierAgent<'T>(courier: Guid -> PackageInfo<'T> -> CourierResult<_>) =
         
@@ -101,7 +106,7 @@ module Courier =
             let deliveryTime = DateTimeOffset.Now
             printfn "[%s] %A" (formatTime deliveryTime) package.payload
             let msg = sprintf "Delivered at: %s" (formatTime deliveryTime)
-            Shipped (package |> deliverPackage agentId deliveryTime msg)
+            Shipped (now(), package |> deliverPackage agentId deliveryTime msg)
 
         type KafkaCourierAgent<'T>() =
             inherit CourierAgent<'T>(kafkaCourier)

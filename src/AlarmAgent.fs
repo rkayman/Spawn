@@ -10,8 +10,8 @@ module Alarm =
      
     type Alarm<'T> = {
         agentId: Guid;
+        messageId: Guid
         alarmId: Guid;
-        configId: Guid;
         cancelToken: CancellationTokenSource;
         frequency: AlarmCadence * TimeSpan;
         payload: 'T
@@ -20,13 +20,14 @@ module Alarm =
         member this.GetMessageContext() = 
             { new IMessageContext with
               member __.AgentId with get() = this.agentId 
-              member __.ActivityId with get() = this.configId 
+              member __.MessageId with get() = this.messageId
+              member __.ActivityId with get() = this.alarmId    // TODO: should be the ID assigned to configuration 
               member __.CausationId with get() = this.alarmId 
               member __.CorrelationId with get() = this.agentId }
-        static member Build<'T>(idAgent, idSchedule, idConfig, tokenCancel, (options: AlarmSettings<'T>)) =
-            { agentId = idAgent; alarmId = idSchedule; 
-              configId = idConfig; cancelToken = tokenCancel; 
-              frequency = options.frequency; payload = options.payload }
+        static member Build<'T>(idAgent, idSchedule, tokenCancel, (options: AlarmSettings<'T>)) =
+            { messageId = Guid.NewGuid(); agentId = idAgent; alarmId = idSchedule; 
+              cancelToken = tokenCancel; frequency = options.frequency; 
+              payload = options.payload }
     and AlarmSettings<'T> = {
         frequency: AlarmCadence * TimeSpan;
         payload: 'T
@@ -34,11 +35,11 @@ module Alarm =
     } and AlarmHandler<'T> = Alarm<'T> -> unit
 
     type AlarmResult<'T> = 
-        | Scheduled of Alarm<'T>
+        | Scheduled of DateTimeOffset * Alarm<'T>
         | Cancelled of DateTimeOffset * Guid * string
         | Alarms of Guid * Alarm<'T> list
         | Stopped of DateTimeOffset * string
-        | Error of string * Exception option
+        | Error of DateTimeOffset * string * Exception option
 
     type private AlarmMessage<'T> = 
         | Schedule of AlarmSettings<'T> * AlarmResult<'T> AsyncReplyChannel
@@ -83,8 +84,7 @@ module Alarm =
         let buildAlarm options =
             let cts = new CancellationTokenSource()
             let scheduleId = Guid.NewGuid()
-            let configId = Guid.NewGuid()
-            Alarm.Build(agentId, scheduleId, configId, cts, options)
+            Alarm.Build(agentId, scheduleId, cts, options)
 
         let scheduleAlarm options =
             let (cadence, ts) = options.frequency
@@ -103,16 +103,18 @@ module Alarm =
                 match message with 
                 | Schedule (options, ch) -> 
                     try
-                        scheduleAlarm options |> Scheduled |> ch.Reply
+                        (now(), scheduleAlarm options) 
+                        |> Scheduled 
+                        |> ch.Reply
                     with
-                    | ex ->  Error (ex.Message, Some ex) |> ch.Reply
+                    | ex ->  Error (now(), ex.Message, Some ex) |> ch.Reply
                     return! loop ()
 
                 | Cancel (id, ch) -> 
                     let guid, msg = match id with
                                     | Some guid -> stopAlarm guid; (guid, (sprintf "Schedule %A stopped" guid))
                                     | None -> stopAllAlarms (); (Guid.Empty, ("All schedules stopped"))
-                    ch.Reply <| Cancelled (DateTimeOffset.Now, guid, msg)
+                    ch.Reply <| Cancelled (now(), guid, msg)
                     return! loop ()
 
                 | List ch ->
@@ -123,7 +125,7 @@ module Alarm =
                     let msg = sprintf "Stopping Alarm {%A}; Cancelling %d schedules; %i Messages remaining in queue." 
                                 agentId alarms.Count inbox.CurrentQueueLength
                     stopAllAlarms()
-                    Stopped (DateTimeOffset.Now, msg) |> ch.Reply
+                    Stopped (now(), msg) |> ch.Reply
                     return! async.Zero()
             }
             loop ())
