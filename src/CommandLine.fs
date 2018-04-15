@@ -6,9 +6,9 @@ module CommandLine =
     open System.IO
 
     let usageMsg = "\nusage: Spawn [options] \
-                    \n  -h | --help \t\tPrint this help message. \
-                    \n  --config <file> \tRetrieve configuration from [configFile] \
-                    \n  --kafka-topic <name> \tName of Kafka topic \
+                    \n  -h | --help \t\t\t\tPrint this help message. \
+                    \n  --config <file> \t\t\tRetrieve configuration from [configFile] \
+                    \n  --kafka-topic <name> \t\t\tName of Kafka topic \
                     \n  --kafka-host <name|addr[:port]> \tHost name or IP address and port\n"
 
     type Options = {
