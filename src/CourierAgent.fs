@@ -102,11 +102,43 @@ module Courier =
 
     module Kafka = 
 
-        let kafkaCourier agentId (package: PackageInfo<'T>) = 
-            let deliveryTime = DateTimeOffset.Now
-            printfn "[%s] %A" (formatTime deliveryTime) package.payload
-            let msg = sprintf "Delivered at: %s" (formatTime deliveryTime)
-            Shipped (now(), package |> deliverPackage agentId deliveryTime msg)
+        open Kafunk
 
-        type KafkaCourierAgent<'T>() =
-            inherit CourierAgent<'T>(kafkaCourier)
+        let private conn host = async {
+            return! Kafka.connHostAsync host
+        }
+
+        let private cfg = Kafunk.ProducerConfig.create 
+                            ( topic = "in.fetch.request.amber",
+                              partition = Partitioner.roundRobin,
+                              requiredAcks = RequiredAcks.Local )
+
+        let private producer host = async {
+            let! kc = conn host
+            return! Producer.createAsync kc cfg
+        }
+
+        let private produce host msg = async {
+            let! p = producer host
+            let str = sprintf "%A" msg
+            return! Producer.produce p (ProducerMessage.ofString str)
+        }
+
+        let kafkaCourierAsync host agentId (package: PackageInfo<'T>) = async {
+
+            let deliveryTime = DateTimeOffset.Now
+            let! result = package.payload |> produce host
+            let msg = sprintf "Delivered at: %s on partition = %i at offset = %i"
+                        (formatTime deliveryTime)
+                        result.partition
+                        result.offset
+            return Shipped (now(), package |> deliverPackage agentId deliveryTime msg)
+        }
+
+        let kafkaCourier host agentId (package: PackageInfo<'T>) =
+            kafkaCourierAsync host agentId package |> Async.RunSynchronously
+
+        type KafkaCourierAgent<'T>(host) =
+            inherit CourierAgent<'T>(kafkaCourier host)
+
+            new() = KafkaCourierAgent("localhost:29092")
