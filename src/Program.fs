@@ -9,8 +9,6 @@ module App =
     let main argv =
         let printUsage() = eprintfn "%s" CommandLine.usageMsg
 
-        let controller = Workflow.WorkflowAgent()
-        
         match CommandLine.parse argv with 
         | CommandLine.Help -> printUsage()
         
@@ -19,9 +17,15 @@ module App =
             printUsage()
 
         | CommandLine.Options options ->
-            match options.file with
-            | None -> printUsage()
-            | Some file ->
+            match options with
+            | { config = None; host = _; topic = _ }
+            | { config = _; host = None; topic = _ }
+            | { config = _; host = _; topic = None } -> printUsage()
+
+            | { config = Some file; host = Some uri; topic = Some t } ->
+                let courier = Courier.Kafka.KafkaCourierAgent(uri.AbsoluteUri, t)
+                let controller = Workflow.WorkflowAgent(courier)
+
                 match controller.LoadConfig(file) with
                 | WorkflowResult.ConfigLoaded config -> 
                     eprintfn "Using configuration:\n%A" config

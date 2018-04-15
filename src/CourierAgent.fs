@@ -48,9 +48,9 @@ module Courier =
         | Ship of PackageInfo<'T> * 'T CourierResult AsyncReplyChannel
         | Stop of string CourierResult AsyncReplyChannel
 
-    let formatTime (time: DateTimeOffset) = time.ToString("yyyyMMddTHH:mm:ss.fffzzz")
+    let private formatTime (time: DateTimeOffset) = time.ToString("yyyyMMddTHH:mm:ss.fffzzz")
 
-    let deliverPackage agentId shipTime msg (pkg: PackageInfo<'T>) = 
+    let private deliverPackage agentId shipTime msg (pkg: PackageInfo<'T>) = 
         { agentId = agentId;
           messageId = Guid.NewGuid();
           activityId = pkg.activityId;
@@ -60,7 +60,7 @@ module Courier =
           message = msg;
           payload = pkg.payload }
 
-    let defaultCourier agentId (package: PackageInfo<'T>) = 
+    let private defaultCourier agentId (package: PackageInfo<'T>) = 
         let deliveryTime = DateTimeOffset.Now
         printfn "[%s] %A" (formatTime deliveryTime) package.payload
         let msg = sprintf "Delivered at: %s" (formatTime deliveryTime)
@@ -108,26 +108,26 @@ module Courier =
             return! Kafka.connHostAsync host
         }
 
-        let private cfg = Kafunk.ProducerConfig.create 
-                            ( topic = "in.fetch.request.amber",
-                              partition = Partitioner.roundRobin,
-                              requiredAcks = RequiredAcks.Local )
+        let private makeConfig topic = Kafunk.ProducerConfig.create
+                                        ( topic, 
+                                          Partitioner.roundRobin, 
+                                          RequiredAcks.Local )
 
-        let private producer host = async {
+        let private producer host topic = async {
             let! kc = conn host
-            return! Producer.createAsync kc cfg
+            return! Producer.createAsync kc (makeConfig topic)
         }
 
-        let private produce host msg = async {
-            let! p = producer host
+        let private produce host topic msg = async {
+            let! p = producer host topic
             let str = sprintf "%A" msg
             return! Producer.produce p (ProducerMessage.ofString str)
         }
 
-        let kafkaCourierAsync host agentId (package: PackageInfo<'T>) = async {
+        let kafkaCourierAsync host topic agentId (package: PackageInfo<'T>) = async {
 
             let deliveryTime = DateTimeOffset.Now
-            let! result = package.payload |> produce host
+            let! result = package.payload |> produce host topic
             let msg = sprintf "Delivered at: %s on partition = %i at offset = %i"
                         (formatTime deliveryTime)
                         result.partition
@@ -135,10 +135,10 @@ module Courier =
             return Shipped (now(), package |> deliverPackage agentId deliveryTime msg)
         }
 
-        let kafkaCourier host agentId (package: PackageInfo<'T>) =
-            kafkaCourierAsync host agentId package |> Async.RunSynchronously
+        let kafkaCourier host topic agentId (package: PackageInfo<'T>) =
+            kafkaCourierAsync host topic agentId package |> Async.RunSynchronously
 
-        type KafkaCourierAgent<'T>(host) =
-            inherit CourierAgent<'T>(kafkaCourier host)
+        type KafkaCourierAgent<'T>(host, topic) =
+            inherit CourierAgent<'T>(kafkaCourier host topic)
 
-            new() = KafkaCourierAgent("localhost:29092")
+            new() = KafkaCourierAgent("localhost:29092", "test")

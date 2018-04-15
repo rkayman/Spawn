@@ -26,8 +26,6 @@ module Workflow =
 
     let private configAgent = ConfigAgent()
 
-    let private courierAgent = Kafka.KafkaCourierAgent()
-
     module private Alarm = 
 
         let mutable agents: Map<string, AlarmAgent<DataSource>> = Map.empty
@@ -120,25 +118,23 @@ module Workflow =
                    |> List.map (snd >> getSchedules)
 
 
-    let private forwardPackage (courier: CourierAgent<_>) (waybill: Alarm<_>) =
-        // TODO: implement activity id that ties back to configuration item
-        let package = { messageId = Guid.NewGuid(); agentId = courier.Id; 
-                        activityId = waybill.alarmId; causationId = waybill.alarmId; 
-                        correlationId = waybill.agentId; payload = waybill.payload }
-        match courier.Ship package with
-        | CourierResult.Shipped (_, delivery) -> 
-            // TODO: log **info**
-            eprintfn "[%s] Shipped %A" (formatTime delivery.shippedAt) delivery.payload
-        | CourierResult.Stopped (at, msg) -> 
-            // TODO: log **warning**
-            eprintfn "[%s] Unexpected outcome: %s" (formatTime at) msg
-        | CourierResult.Error (at, msg, ex) -> 
-            // TODO: log **error**
-            eprintfn "[%s] Error: %s\n%A" (formatTime at) msg ex
+    type WorkflowAgent(courier: CourierAgent<_>) = 
 
-    let private forwardToCourier = forwardPackage courierAgent
-
-    type WorkflowAgent() = 
+        let forwardPackage (waybill: Alarm<_>) =
+            // TODO: implement activity id that ties back to configuration item
+            let package = { messageId = Guid.NewGuid(); agentId = courier.Id; 
+                            activityId = waybill.alarmId; causationId = waybill.alarmId; 
+                            correlationId = waybill.agentId; payload = waybill.payload }
+            match courier.Ship package with
+            | CourierResult.Shipped (_, delivery) -> 
+                // TODO: log **info**
+                eprintfn "[%s] Shipped %A" (formatTime delivery.shippedAt) delivery.message
+            | CourierResult.Stopped (at, msg) -> 
+                // TODO: log **warning**
+                eprintfn "[%s] Unexpected outcome: %s" (formatTime at) msg
+            | CourierResult.Error (at, msg, ex) -> 
+                // TODO: log **error**
+                eprintfn "[%s] Error: %s\n%A" (formatTime at) msg ex
 
         let agentId = Guid.NewGuid()
 
@@ -149,7 +145,7 @@ module Workflow =
                 | LoadConfig (file, ch) ->
                     match configAgent.ReadConfig(file) with
                     | Configuration.ConfigRead (_, cfg) -> 
-                        cfg |> Alarm.createMany forwardToCourier
+                        cfg |> Alarm.createMany forwardPackage
                         ConfigLoaded cfg |> ch.Reply
                     | Configuration.Error (msg, ex) -> 
                         // TODO: log **error**
@@ -177,7 +173,7 @@ module Workflow =
                         |> eprintfn "%A"
                     Alarm.stopAlarms ()
                     Alarm.stopAgents ()
-                    courierAgent.Stop() // TODO: log **info/error**
+                    courier.Stop()  // TODO: log **info/error**
                         |> eprintfn "%A"
                     let at = DateTimeOffset.Now
                     let msg = sprintf "Stopped workflow at %s with %i messages in queue"
@@ -187,6 +183,8 @@ module Workflow =
                 
             }
             loop())
+
+        new() = WorkflowAgent(CourierAgent())
 
         member __.Id with get() = agentId
 
