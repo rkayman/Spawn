@@ -124,7 +124,7 @@ module Courier =
             return! Producer.produce p (ProducerMessage.ofString str)
         }
 
-        let kafkaCourierAsync host topic agentId (package: PackageInfo<'T>) = async {
+        let private kafkaCourierAsync host topic agentId (package: PackageInfo<'T>) = async {
 
             let deliveryTime = DateTimeOffset.Now
             let! result = package.payload |> produce host topic

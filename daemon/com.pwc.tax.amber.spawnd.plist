@@ -9,6 +9,10 @@
         <string>/usr/local/libexec/spawn/spawnd</string>
         <string>--config</string>
         <string>/etc/spawnd/amberPipe-atom.json</string>
+        <string>--kafka-host</string>
+        <string>localhost:29092</string>
+        <string>--kafka-topic</string>
+        <string>in.fetch.request.amber</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
