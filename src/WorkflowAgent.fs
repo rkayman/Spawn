@@ -24,8 +24,6 @@ module Workflow =
 
     let private formatTime (time: DateTimeOffset) = time.ToString("yyyyMMddTHH:mm:ss.fffzzz")
 
-    let private configAgent = ConfigAgent()
-
     module private Alarm = 
 
         let mutable agents: Map<string, AlarmAgent<DataSource>> = Map.empty
@@ -118,7 +116,7 @@ module Workflow =
                    |> List.map (snd >> getSchedules)
 
 
-    type WorkflowAgent(courier: CourierAgent<_>) = 
+    type WorkflowAgent(courier: CourierAgent<_>, config: ConfigAgent) = 
 
         let forwardPackage (waybill: Alarm<_>) =
             // TODO: implement activity id that ties back to configuration item
@@ -143,7 +141,7 @@ module Workflow =
                 let! message = inbox.Receive()
                 match message with
                 | LoadConfig (file, ch) ->
-                    match configAgent.ReadConfig(file) with
+                    match config.ReadConfig(file) with
                     | Configuration.ConfigRead (_, cfg) -> 
                         cfg |> Alarm.createMany forwardPackage
                         ConfigLoaded cfg |> ch.Reply
@@ -169,7 +167,7 @@ module Workflow =
                     return! loop()
                 
                 | StopWorkflow ch ->
-                    configAgent.Stop()  // TODO: log **info/error**
+                    config.Stop()  // TODO: log **info/error**
                         |> eprintfn "%A"
                     Alarm.stopAlarms ()
                     Alarm.stopAgents ()
@@ -184,7 +182,7 @@ module Workflow =
             }
             loop())
 
-        new() = WorkflowAgent(CourierAgent())
+        new() = WorkflowAgent(CourierAgent(), ConfigAgent())
 
         member __.Id with get() = agentId
 

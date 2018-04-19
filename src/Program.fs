@@ -23,8 +23,9 @@ module App =
             | { config = _; host = _; topic = None } -> printUsage()
 
             | { config = Some file; host = Some uri; topic = Some t } ->
+                let config = Configuration.ConfigAgent()
                 let courier = Courier.Kafka.KafkaCourierAgent(uri.AbsoluteUri, t)
-                let controller = Workflow.WorkflowAgent(courier)
+                let controller = Workflow.WorkflowAgent(courier, config)
 
                 match controller.LoadConfig(file) with
                 | WorkflowResult.ConfigLoaded config -> 
