@@ -3,12 +3,12 @@ Description=Project Amber, Spawn requests for external integrations
 Documentation=https://github.pwc.com/MTS/Amber
 
 [Service]
-WorkingDirectory=/usr/local/bin/amber/spawn
+WorkingDirectory=/usr/local/bin/amber/spawnd
 #ExecStart=/usr/local/share/dotnet/dotnet /var/aspnetcore/hellomvc/hellomvc.dll
-ExecStart=/usr/local/bin/amber/Spawn --config /usr/local/bin/amber/Spawn/configs/amberPipe-atom.json --kafka-host localhost:29092 --kafka-topic in.fetch.request.amber
+ExecStart=/usr/local/bin/amber/spawnd --config /usr/local/bin/amber/Spawn/configs/amberPipe-atom.json --kafka-host localhost:29092 --kafka-topic in.fetch.request.amber
 Restart=always
 RestartSec=10
-SyslogIdentifier=com.pwc.tax.amber.spawn
+SyslogIdentifier=com.pwc.tax.amber.spawnd
 User=dotnetuser
 Group=dotnetuser
 PrivateTemp=true
