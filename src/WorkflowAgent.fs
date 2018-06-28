@@ -4,23 +4,27 @@ module Workflow =
 
     open System
     open System.IO
+    open Logary
     open Alarm
     open Configuration
     open Courier
     open Utilities
     
     type WorkflowResult<'T> = 
-        | ConfigLoaded of Configuration
+        | WorkflowStarted of Configuration
         | Alarms of (Guid * Alarm<'T> list) list
         | AlarmStopped of DateTimeOffset * string
         | WorkflowStopped of DateTimeOffset * string
 
     type WorkflowMessage<'T> = 
-        | LoadConfig of FileInfo * WorkflowResult<'T> AsyncReplyChannel
+        | StartWorkflow of FileInfo * WorkflowResult<'T> AsyncReplyChannel
         | ListAlarms of WorkflowResult<'T> AsyncReplyChannel
         | StopAlarm of string * Guid option * WorkflowResult<'T> AsyncReplyChannel
         | StopWorkflow of WorkflowResult<'T> AsyncReplyChannel
 
+    let private logger = Logging.getCurrentLogger ()
+
+    let private logMessage level msg = msg |> Message.event level |> logger.logSimple
 
     let private formatTime (time: DateTimeOffset) = time.ToString("yyyyMMddTHH:mm:ss.fffzzz")
 
@@ -52,26 +56,29 @@ module Workflow =
 
         let stopAgent domain =
             match agents.TryFind domain with
-            | Some agent -> agent.Stop() |> eprintfn "%A"   // TODO: log **info/error**
-            | None -> eprintfn "Alarm agent servicing domain [%A] not found" domain
+            | Some agent -> agent.Stop() 
+                            |> sprintf "%A"
+                            |> logMessage Info
+            | None -> sprintf "Alarm agent servicing domain [%A] not found" domain
+                      |> logMessage Warn
 
         let stopAgents () =
-            // log **info**
-            agents |> Map.iter (fun _ agent -> agent.Stop() |> eprintfn "%A")
+            let stop (a: AlarmAgent<_>) = a.Stop() |> sprintf "%A" |> logMessage Info
+            agents |> Map.iter (fun _ agent -> stop agent)
             agents <- Map.empty
 
         let stopAlarm domain id =
             match agents.TryFind domain with
             | Some agent -> 
-                // TODO: log **info/error**
-                agent.CancelSchedule(id) |> eprintfn "%A"
+                agent.CancelSchedule(id) |> sprintf "%A" |> logMessage Info
             | None -> 
-                // TODO: log **warning**
-                eprintfn "Schedule %A in Alarm servicing %s not found" id domain
+                sprintf "Schedule %A in Alarm servicing %s not found" id domain
+                |> logMessage Warn
 
         let stopAlarms () =
-            // TODO: log **info**
-            agents |> Map.iter (fun _ agent -> agent.CancelSchedule() |> eprintfn "%A")
+            let stop (a: AlarmAgent<_>) = a.CancelSchedule()
+                                          |> sprintf "%A" |> logMessage Info
+            agents |> Map.iter (fun _ agent -> stop agent)
 
         let configure forwardingHandler (ds: DataSource) =
             let delay = TimeSpan(0, 0, Math.Abs(ds.frequencyInSeconds))
@@ -81,15 +88,14 @@ module Workflow =
         let create (agent: AlarmAgent<_>) settings =
             match agent.Schedule(settings) with
             | AlarmResult.Scheduled (at, a) -> 
-                // TODO: log **info**
-                eprintfn "[%s] Alarm set {%A} with schedule {%A}" 
+                sprintf "[%s] Alarm set {%A} with schedule {%A}" 
                          (formatTime at) a.agentId a.alarmId
+                |> logMessage Info
             | AlarmResult.Error (at, msg, ex) -> 
-                // TODO: log **error**
-                eprintfn "[%s] Error: %s\n%A" (formatTime at) msg ex
+                sprintf "[%s] Error: %s\n%A" (formatTime at) msg ex
+                |> logMessage LogLevel.Error
             | x -> 
-                // TODO: log **warning**
-                eprintfn "Unexpected outcome: %A" x
+                sprintf "Unexpected outcome: %A" x |> logMessage Warn
 
         let createMany forwardingHandler (cfg: Configuration) =
             let rec loop (lst: DataSource list) =
@@ -105,52 +111,58 @@ module Workflow =
             match agent.ListSchedules() with
             | AlarmResult.Alarms (id, lst) -> id, lst
             | AlarmResult.Error (at, msg, ex) -> 
-                // TODO: log **error**
-                failwithf "[%s] Error: %s\n%A" (formatTime at) msg ex
+                let failmsg = sprintf "[%s] Error: %s\n%A" (formatTime at) msg ex
+                failmsg |> logMessage Fatal
+                failwith failmsg
             | e -> 
-                // TODO: log **warning**
-                failwithf "Unexpected outcome: %A" e
+                let failmsg = sprintf "Unexpected outcome: %A" e
+                failmsg |> logMessage Fatal
+                failwith failmsg
 
         let getAllSchedules () =
             agents |> Map.toList
                    |> List.map (snd >> getSchedules)
 
 
-    type WorkflowAgent(courier: CourierAgent<_>, config: ConfigAgent) = 
+    // type WorkflowAgent(courier: CourierAgent<_>, config: ConfigAgent) = 
+    type WorkflowAgent(courierFactory: unit -> CourierAgent<_>, configFactory: unit -> ConfigAgent) = 
 
-        let forwardPackage (waybill: Alarm<_>) =
+        let forwardPackageToCourier (courier: CourierAgent<_>) (waybill: Alarm<_>) =
             // TODO: implement activity id that ties back to configuration item
             let package = { messageId = Guid.NewGuid(); agentId = courier.Id; 
                             activityId = waybill.alarmId; causationId = waybill.alarmId; 
                             correlationId = waybill.agentId; payload = waybill.payload }
             match courier.Ship package with
             | CourierResult.Shipped (_, delivery) -> 
-                // TODO: log **info**
-                eprintfn "[%s] Shipped %A" (formatTime delivery.shippedAt) delivery.message
+                sprintf "[%s] Shipped %A" (formatTime delivery.shippedAt) delivery.message
+                |> logMessage Info
             | CourierResult.Stopped (at, msg) -> 
-                // TODO: log **warning**
-                eprintfn "[%s] Unexpected outcome: %s" (formatTime at) msg
+                sprintf "[%s] Unexpected outcome: %s" (formatTime at) msg
+                |> logMessage Warn
             | CourierResult.Error (at, msg, ex) -> 
-                // TODO: log **error**
-                eprintfn "[%s] Error: %s\n%A" (formatTime at) msg ex
+                sprintf "[%s] Error: %s\n%A" (formatTime at) msg ex
+                |> logMessage LogLevel.Error
 
         let agentId = Guid.NewGuid()
 
         let agent = Agent.Start(fun inbox ->
+            let courier = courierFactory ()
+            let config = configFactory ()
+            let forwardPackage = forwardPackageToCourier courier
+
             let rec loop () = async {
                 let! message = inbox.Receive()
                 match message with
-                | LoadConfig (file, ch) ->
+                | StartWorkflow (file, ch) ->
                     match config.ReadConfig(file) with
                     | Configuration.ConfigRead (_, cfg) -> 
                         cfg |> Alarm.createMany forwardPackage
-                        ConfigLoaded cfg |> ch.Reply
+                        WorkflowStarted cfg |> ch.Reply
                     | Configuration.Error (msg, ex) -> 
-                        // TODO: log **error**
-                        eprintfn "Error: %s\n%A" msg ex
+                        sprintf "Error: %s\n%A" msg ex |> logMessage LogLevel.Error
                     | Configuration.Stopped (at, msg) -> 
-                        // TODO: log **warning**
-                        eprintfn "[%s] Unexpected outcome: %s" (formatTime at) msg
+                        sprintf "[%s] Unexpected outcome: %s" (formatTime at) msg
+                        |> logMessage Warn
                     return! loop()
 
                 | ListAlarms ch ->
@@ -182,12 +194,12 @@ module Workflow =
             }
             loop())
 
-        new() = WorkflowAgent(CourierAgent(), ConfigAgent())
+        new() = WorkflowAgent(CourierAgent, ConfigAgent)
 
         member __.Id with get() = agentId
 
-        member __.LoadConfig(file: FileInfo) =
-            let buildMessage replyChannel = LoadConfig (file, replyChannel)
+        member __.Start(file: FileInfo) =
+            let buildMessage replyChannel = StartWorkflow (file, replyChannel)
             agent.PostAndReply buildMessage
 
         member __.ListAlarms() = agent.PostAndReply (ListAlarms)
@@ -196,5 +208,5 @@ module Workflow =
             let buildMessage replyChannel = StopAlarm (domain, alarmId, replyChannel)
             agent.PostAndReply buildMessage
         
-        member __.StopWorkflow() = agent.PostAndReply (StopWorkflow)
+        member __.Stop() = agent.PostAndReply (StopWorkflow)
                 

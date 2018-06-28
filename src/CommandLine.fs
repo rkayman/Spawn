@@ -4,12 +4,15 @@ module CommandLine =
 
     open System
     open System.IO
+    open Logary
 
     let usageMsg = "\nusage: Spawn [options] \
                     \n  -h | --help \t\t\t\tPrint this help message. \
                     \n  --config <file> \t\t\tRetrieve configuration from [configFile] \
                     \n  --kafka-topic <name> \t\t\tName of Kafka topic \
                     \n  --kafka-host <name|addr[:port]> \tHost name or IP address and port\n"
+
+    let private logger = Logging.getCurrentLogger ()
 
     type Options = {
         config: FileInfo option 
@@ -25,8 +28,9 @@ module CommandLine =
     } with
         member this.PrintError = 
             match this.argument with
-            | NoOptions -> eprintfn "%s" this.message
-            | _ -> eprintfn "%A option: %s" this.argument this.message
+            | NoOptions -> this.message |> Message.eventFatal |> logger.logSimple
+            | _ -> sprintf "%A option: %s" this.argument this.message
+                   |> Message.eventFatal |> logger.logSimple
 
     type OptionErrors = {
         errors: OptionError list
