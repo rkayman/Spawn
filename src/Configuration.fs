@@ -17,7 +17,14 @@ module Configuration =
     let private string100 = create singleLineTrimmed (lengthValidator 100) String100 
 
     /// Converts a wrapped string to a string of length 100
-    let private convertTo100 s = apply string100 s
+    let private convertTo100 s = 
+        match string100 s with 
+        | Some s' -> s' 
+        | _ -> failwith (sprintf "[CONFIGURATION ERROR] Name is too long: %s" s)
+
+    let private string100ToJson (s: String100) = String <| value s 
+
+    let private uriToJson (u: Uri) = String <| u.ToString() 
 
     type Protocol = Http | Https | Ftp | Sftp 
 
@@ -27,7 +34,9 @@ module Configuration =
         | "https"   -> Https 
         | "ftp"     -> Ftp 
         | "sftp"    -> Sftp 
-        | _         -> failwith (sprintf "Unknown protocol: %s" s) 
+        | _         -> failwith (sprintf "[CONFIGURATION ERROR] Unknown protocol: %s" s) 
+
+    let private protocolToJson (p: Protocol) = String <| p.ToString().ToLowerInvariant() 
 
     type Format = Json | Xml | Csv 
 
@@ -36,7 +45,9 @@ module Configuration =
         | "json"    -> Json 
         | "xml"     -> Xml 
         | "csv"     -> Csv 
-        | _         -> failwith (sprintf "Unknown format: %s" s) 
+        | _         -> failwith (sprintf "[CONFIGURATION ERROR] Unknown format: %s" s) 
+
+    let private formatToJson (f: Format) = String <| f.ToString().ToLowerInvariant() 
 
     type Feed = Atom | Rss 
 
@@ -44,7 +55,9 @@ module Configuration =
         match s.ToLowerInvariant() with 
         | "atom"    -> Atom 
         | "rss"     -> Rss 
-        | _         -> failwith (sprintf "Unknown feed: %s" s) 
+        | _         -> failwith (sprintf "[CONFIGURATION ERROR] Unknown feed: %s" s) 
+
+    let private feedToJson (f: Feed) = String <| f.ToString().ToLowerInvariant() 
 
     type RecordType = Assignee | Client | WorkRecord 
 
@@ -53,58 +66,86 @@ module Configuration =
         | "assignee"    -> Assignee 
         | "client"      -> Client 
         | "workrecord"  -> WorkRecord 
-        | _             -> failwith (sprintf "Unknown record type: %s" s) 
+        | _             -> failwith (sprintf "[CONFIGURATION ERROR] Unknown record type: %s" s) 
 
-    let private liftNumber = function 
+    let private recordTypeToJson (x: RecordType) = String <| x.ToString().ToLowerInvariant()  
+     
+    let private liftNumber json = 
+        match json with 
         | String x -> x 
-        | _ -> failwithf "Unknown JSON: %A" json
+        | Number x -> string x
+        | _ -> failwith (sprintf "[CONFIGURATION ERROR] Invalid number: %A" json) 
 
     type DataSource = {
-        name: String100;
-        sourceUrl: Uri;
-        protocol: Protocol;
-        format: Format;
-        feed: Feed;
-        recordType: RecordType;
-        frequencyInSeconds: int;
-        batchSize: uint32;
-        maxRetries: uint16
-    } with static member FromJson (_: DataSource) = json {
-            let! n = Json.read "name"
-            let! url = Json.read "sourceURL"
-            let! p = Json.read "protocol" 
-            let! fmt = Json.read "format" 
-            let! f = Json.read "feed" 
-            let! rt = Json.read "recordType" 
-            let! fis = Json.read "frequencyInSeconds" 
+        batchSize: uint32
+        feed: Feed
+        format: Format
+        frequencyInSeconds: int
+        maxRetries: uint16 
+        name: String100
+        protocol: Protocol
+        recordType: RecordType
+        sourceUrl: Uri
+    } with 
+
+        static member FromJson (_: DataSource) = json {
             let! b = Json.read "batchSize" 
+            let! f = Json.read "feed" 
+            let! fmt = Json.read "format" 
+            let! fis = Json.read "frequencyInSeconds" 
             let! mr = Json.read "maxRetries" 
-            return { name = String100 n; 
-                     sourceUrl = Uri url; 
-                     protocol = p |> protocol; 
-                     format = fmt |> format; 
-                     feed = f |> feed; 
-                     recordType = rt |> recordType; 
-                     frequencyInSeconds = fis |> liftNumber |> int; 
-                     batchSize = b |> liftNumber |> uint32; 
-                     maxRetries = mr |> liftNumber |> uint16 }
-    }
+            let! n = Json.read "name"
+            let! p = Json.read "protocol" 
+            let! rt = Json.read "recordType" 
+            let! url = Json.read "sourceURL"
+            return { 
+                batchSize = b |> liftNumber |> uint32 
+                feed = f |> feed 
+                format = fmt |> format 
+                frequencyInSeconds = fis |> liftNumber |> int 
+                maxRetries = mr |> liftNumber |> uint16 
+                name = n |> convertTo100 
+                protocol = p |> protocol 
+                recordType = rt |> recordType 
+                sourceUrl = Uri url 
+            }
+        } 
+
+        static member ToJson (x: DataSource) = json {
+            do! Json.write "batchSize" x.batchSize 
+            do! Json.writeWith feedToJson "feed" x.feed 
+            do! Json.writeWith formatToJson "format" x.format 
+            do! Json.write "frequencyInSeconds" x.frequencyInSeconds 
+            do! Json.write "maxRetries" x.maxRetries 
+            do! Json.writeWith string100ToJson "name" x.name
+            do! Json.writeWith protocolToJson "protocol" x.protocol 
+            do! Json.writeWith recordTypeToJson "recordType" x.recordType 
+            do! Json.writeWith uriToJson "sourceURL" x.sourceUrl 
+        }
 
     type Configuration = {
         dataSource: DataSource []
     } with 
-        
-        static member FromJson(_: Configuration) = json {
+
+        static member FromJson (_: Configuration) = json {
             let! c = Json.read "dataSource"
             return { dataSource = c }
         } 
-        
-        static member ReadConfig(file: FileInfo): Configuration = 
-            let read (fi: FileInfo) = 
-                use reader = new StreamReader(fi.FullName, true)
-                reader.ReadToEnd()
 
-            file |> read |> Json.parse |> Json.deserialize
+        static member ToJson (x: Configuration) = json {
+            do! Json.write "dataSource" x.dataSource
+        }
+
+    let convertJsonToConfig json : Configuration = json |> Json.parse |> Json.deserialize 
+
+    let convertConfigToJson (cfg: Configuration) = cfg |> Json.serialize 
+                                                       |> Json.format 
+
+    let private readFile (file: FileInfo) = 
+        use reader = new StreamReader(file.FullName, true) 
+        reader.ReadToEnd() 
+
+    let readConfigFile = readFile >> convertJsonToConfig
 
 
     type ConfigAgentResponse = 
@@ -115,7 +156,8 @@ module Configuration =
     type private ConfigAgentMessage = 
         //| WatchFile of FileInfo * ConfigAgentResponse ResultMessage AsyncReplyChannel
         //| WatchFolder of DirectoryInfo * ConfigurationManagerResponse ResultMessage AsyncReplyChannel
-        | ReadConfig of FileInfo * ConfigAgentResponse AsyncReplyChannel
+        | ReadConfig of string * ConfigAgentResponse AsyncReplyChannel
+        | ReadConfigFile of FileInfo * ConfigAgentResponse AsyncReplyChannel
         | Stop of ConfigAgentResponse AsyncReplyChannel
 
     type ConfigAgent() = 
@@ -126,8 +168,13 @@ module Configuration =
             let rec loop () = async {
                 let! msg = inbox.Receive()
                 match msg with
-                | ReadConfig (file, ch) -> 
-                    let config = file |> Configuration.ReadConfig
+                | ReadConfig (json, ch) -> 
+                    let config = json |> convertJsonToConfig
+                    ConfigRead (agentId, config) |> ch.Reply 
+                    return! loop ()
+
+                | ReadConfigFile (file, ch) -> 
+                    let config = file |> readConfigFile 
                     ConfigRead (agentId, config) |> ch.Reply
                     return! loop ()
 
@@ -140,10 +187,14 @@ module Configuration =
             loop ())
 
         member __.Id with get() = agentId
+
+        member __.ReadConfig(json: string) = 
+            let buildMessage ch = ReadConfig (json, ch) 
+            agent.PostAndAsyncReply buildMessage 
         
         member __.ReadConfig(fi: FileInfo) =
-            let buildMessage chan = ReadConfig (fi, chan)
-            agent.PostAndReply buildMessage
+            let buildMessage ch = ReadConfigFile (fi, ch)
+            agent.PostAndAsyncReply buildMessage 
 
         member __.Stop() =
-            agent.PostAndReply (Stop)
+            agent.PostAndAsyncReply (Stop)

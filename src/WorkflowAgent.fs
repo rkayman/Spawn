@@ -107,6 +107,11 @@ module Workflow =
                     loop lst'
             loop (Array.toList cfg.dataSource)
 
+        // let createMany2 forwardingHandler fs lst = 
+        //     lst |> Seq.map (fun x -> x, x |> fs.getSourceUrl |> getDomainAgent)
+        //         |> Seq.map (fun (x,a) -> a, x |> configure forwardingHandler)
+        //         |> Seq.iter (fun (a,x) -> create a x)
+
         let getSchedules (agent: AlarmAgent<_>) =
             match agent.ListSchedules() with
             | AlarmResult.Alarms (id, lst) -> id, lst
@@ -153,8 +158,9 @@ module Workflow =
             let rec loop () = async {
                 let! message = inbox.Receive()
                 match message with
-                | StartWorkflow (file, ch) ->
-                    match config.ReadConfig(file) with
+                | StartWorkflow (file, ch) -> 
+                    // TODO: change this from sequential to async (include reply channel)
+                    match config.ReadConfig(file) |> Async.RunSynchronously with
                     | Configuration.ConfigRead (_, cfg) -> 
                         cfg |> Alarm.createMany forwardPackage
                         WorkflowStarted cfg |> ch.Reply

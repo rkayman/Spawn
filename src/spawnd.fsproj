@@ -4,20 +4,14 @@
     <TargetFramework>netcoreapp2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="WrappedString.fs"/>
-    <Compile Include="AgentUtilities.fs"/>
-    <Compile Include="CommandLine.fs"/>
-    <Compile Include="Configuration.fs"/>
-    <Compile Include="CourierAgent.fs"/>
-    <Compile Include="AlarmAgent.fs"/>
-    <Compile Include="WorkflowAgent.fs"/>
-    <Compile Include="ConsoleHost.fs"/>
-    <Compile Include="Program.fs"/>
+    <Compile Include="WrappedString.fs" />
+    <Compile Include="AgentUtilities.fs" />
+    <Compile Include="Configuration.fs" />
+    <Compile Include="ConsoleHost.fs" />
+    <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Chiron" Version="6.2.1"/>
-    <PackageReference Include="FParsec" Version="1.0.3"/>
-    <PackageReference Include="Logary" Version="4.2.1"/>
-    <PackageReference Include="Kafunk" Version="1.0.0"/>
+    <PackageReference Include="Chiron" Version="6.2.1" />
+    <PackageReference Include="FParsec" Version="1.0.3" />
   </ItemGroup>
 </Project>
