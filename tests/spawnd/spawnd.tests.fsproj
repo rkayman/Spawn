@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\spawnd\spawnd.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="AlarmTests.fs" />
+    <Compile Include="AlarmIntervalTests.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FsUnit" Version="3.4.0" />
+    <PackageReference Include="FsUnit.Xunit" Version="3.4.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.8.0" />
+    <PackageReference Include="xunit" Version="*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="*" />
+    <PackageReference Include="FSharp.Control.Reactive" Version="*" />
+    <PackageReference Include="FSharp.Control.Reactive.Testing" Version="*" />
+    <PackageReference Include="NodaTime" Version="*" />
+  </ItemGroup>
+
+</Project>

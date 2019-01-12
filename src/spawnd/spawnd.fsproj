@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Console.fs" />
+    <Compile Include="TimeUtilities.fs" />
+    <Compile Include="AlarmInterval.fs" />
+    <Compile Include="Clock.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" Version="2.4.2" />
+    <PackageReference Include="FSharp.Control.Reactive" Version="*" />
+  </ItemGroup>
+
+</Project>
