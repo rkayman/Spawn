@@ -1,4 +1,4 @@
-namespace SpawnTimers
+namespace Spawn
 
 open NodaTime
 open FSharp.Control.Reactive

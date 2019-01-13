@@ -1,4 +1,4 @@
-module SpawnTimersTests
+module ClockTests
 
 open NodaTime
 open Xunit
@@ -8,11 +8,11 @@ open FSharp.Control.Reactive.Testing
 open Microsoft.Reactive.Testing
 open System.Reactive.Concurrency
 open System
-open SpawnTimers
-open SpawnTimers.Alarm
-open SpawnTimers.Repeater
-open SpawnTimers.TimeUtilities
-open SpawnTimers.AlarmInterval
+open Spawn
+open Spawn.Alarm
+open Spawn.Repeater
+open Spawn.TimeUtilities
+open Spawn.AlarmInterval
 
 
 let private oneSec = Sec 1L

@@ -4,9 +4,9 @@ open NodaTime
 open Xunit
 open FsUnit
 open System
-open SpawnTimers
-open SpawnTimers.AlarmInterval
-open SpawnTimers.NodaUtilities
+open Spawn
+open Spawn.AlarmInterval
+open Spawn.NodaUtilities
 
 let toIsoDayOfWeek = function 
     | DayOfWeek.Sunday    -> IsoDayOfWeek.Sunday

@@ -1,4 +1,4 @@
-namespace SpawnTimers
+namespace Spawn
 
 // Registered to: http://fssnip.net/7Vy
 module Console =
