@@ -1,11 +1,11 @@
-namespace Spawn
+namespace Spawn.Clock
 
 open NodaTime
 open FSharp.Control.Reactive
 open System.Reactive
 open System.Reactive.Concurrency
 open System
-open TimeUtilities
+open Utilities
 
 module BalanceWheel =
     

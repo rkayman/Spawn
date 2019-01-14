@@ -1,9 +1,9 @@
-namespace Spawn
+namespace Spawn.Clock
 
 open NodaTime
 open System
 
-module TimeUtilities =
+module Utilities =
 
     type Frequency =
         | Ticks of int64

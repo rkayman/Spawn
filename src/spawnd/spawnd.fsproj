@@ -7,14 +7,18 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Console.fs" />
-    <Compile Include="TimeUtilities.fs" />
-    <Compile Include="AlarmInterval.fs" />
-    <Compile Include="Clock.fs" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NodaTime" Version="2.4.2" />
-    <PackageReference Include="FSharp.Control.Reactive" Version="*" />
+    <PackageReference Include="NodaTime" Version="2.4.4" />
+    <PackageReference Include="FSharp.Control.Reactive" Version="4.1.0" />
+    <PackageReference Update="FSharp.Core" Version="4.5.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Clock\TimeUtilities.fs" />
+    <Compile Include="Clock\AlarmInterval.fs" />
+    <Compile Include="Clock\AlarmClock.fs" />
   </ItemGroup>
 
 </Project>

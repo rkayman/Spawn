@@ -8,11 +8,11 @@ open FSharp.Control.Reactive.Testing
 open Microsoft.Reactive.Testing
 open System.Reactive.Concurrency
 open System
-open Spawn
-open Spawn.Alarm
-open Spawn.Repeater
-open Spawn.TimeUtilities
-open Spawn.AlarmInterval
+open Spawn.Clock
+open Spawn.Clock.Alarm
+open Spawn.Clock.Repeater
+open Spawn.Clock.Utilities
+open Spawn.Clock.AlarmInterval
 
 
 let private oneSec = Sec 1L

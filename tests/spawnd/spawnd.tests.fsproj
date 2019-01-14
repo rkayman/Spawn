@@ -15,19 +15,20 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="AlarmIntervalTests.fs" />
-    <Compile Include="ClockTests.fs" />
+    <PackageReference Include="FsUnit" Version="3.4.0" />
+    <PackageReference Include="FsUnit.Xunit" Version="3.4.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.9.0" />
+    <PackageReference Include="xunit" Version="2.4.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.1" />
+    <PackageReference Include="FSharp.Control.Reactive" Version="4.1.0" />
+    <PackageReference Include="FSharp.Control.Reactive.Testing" Version="4.1.0" />
+    <PackageReference Include="NodaTime" Version="2.4.4" />
+    <PackageReference Update="FSharp.Core" Version="4.5.4" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FsUnit" Version="3.4.0" />
-    <PackageReference Include="FsUnit.Xunit" Version="3.4.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.8.0" />
-    <PackageReference Include="xunit" Version="*" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="*" />
-    <PackageReference Include="FSharp.Control.Reactive" Version="*" />
-    <PackageReference Include="FSharp.Control.Reactive.Testing" Version="*" />
-    <PackageReference Include="NodaTime" Version="*" />
+    <Compile Include="Clock\AlarmClockTests.fs" />
+    <Compile Include="Clock\AlarmIntervalTests.fs" />
   </ItemGroup>
 
 </Project>

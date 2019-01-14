@@ -1,4 +1,4 @@
-namespace Spawn
+namespace Spawn.Clock
 
 open NodaTime
 open NodaUtilities
