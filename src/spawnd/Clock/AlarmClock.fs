@@ -5,7 +5,7 @@ open FSharp.Control.Reactive
 open System.Reactive
 open System.Reactive.Concurrency
 open System
-open Utilities
+open Spawn.Clock.Time
 
 module BalanceWheel =
     
@@ -105,7 +105,7 @@ module Repeater =
              (!>) cur, next'
         
     let private strikeInternal observe pattern last source =
-        let nextInterval = AlarmInterval.next pattern
+        let nextInterval = Intervals.next pattern
         let next = last |> nextInterval
         let seed = ({ Time = last; Recoil = 0L}, next)
         let ignoreFirst = (<>) seed
@@ -123,14 +123,14 @@ module Repeater =
 
 
 module Alarm =
-
-    open AlarmInterval
+    
+    open Spawn.Clock.Time.Intervals
 
     type Configuration = 
     | OnceAt of DateTimeOffset
     | OnceAfter of TimeSpan
     | Every of RepeatPattern * DateTimeOffset option
-    | Schedule of AlarmPattern * Instant option
+    | Schedule of AlarmInterval * Instant option
     | Never
     and RepeatPattern =
     | Frequency of Frequency
@@ -176,7 +176,7 @@ module Alarm =
                     |> Repeater.strikeEvery period' startAt'
         | Schedule (pattern, last) ->
             let instant = Instant.FromDateTimeOffset(DateTimeOffset.Now)
-            let defaultStart = AlarmInterval.prev pattern instant
+            let defaultStart = prev pattern instant
             let last' = last |> Option.defaultValue defaultStart
             recoils |> Repeater.strike pattern last'
 

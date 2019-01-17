@@ -11,8 +11,8 @@ open System
 open Spawn.Clock
 open Spawn.Clock.Alarm
 open Spawn.Clock.Repeater
-open Spawn.Clock.Utilities
-open Spawn.Clock.AlarmInterval
+open Spawn.Clock.Time
+open Spawn.Clock.Time.Intervals
 
 
 let private oneSec = Sec 1L

@@ -4,9 +4,8 @@ open NodaTime
 open Xunit
 open FsUnit
 open System
-open Spawn.Clock
-open Spawn.Clock.AlarmInterval
-open Spawn.Clock.NodaUtilities
+open Spawn.Clock.Time.Intervals
+open Spawn.Clock.Utilities
 
 let toIsoDayOfWeek = function 
     | DayOfWeek.Sunday    -> IsoDayOfWeek.Sunday
@@ -48,7 +47,7 @@ module WeekdayTests =
 
         let interval = Daily { alarm = atTime; kind = Weekdays }
 
-        let actual = given |> AlarmInterval.next interval
+        let actual = given |> next interval
 
         actual |> should equal expected
         actual.ToDateTimeOffset().DayOfWeek |> toIsoDayOfWeek 
@@ -78,7 +77,7 @@ module WeekdayTests =
 
         let interval = Daily { alarm = atTime; kind = Weekdays }
 
-        let actual = given |> AlarmInterval.prev interval
+        let actual = given |> prev interval
 
         actual |> should equal expected
         actual.ToDateTimeOffset().DayOfWeek |> toIsoDayOfWeek 
@@ -111,7 +110,7 @@ module WeekendTests =
 
         let interval = Daily { alarm = atTime; kind = Weekends }
 
-        let actual = given |> AlarmInterval.next interval
+        let actual = given |> next interval
 
         actual |> should equal expected
         actual.ToDateTimeOffset().DayOfWeek |> toIsoDayOfWeek 
@@ -140,7 +139,7 @@ module WeekendTests =
 
         let interval = Daily { alarm = atTime; kind = Weekends }
 
-        let actual = given |> AlarmInterval.prev interval
+        let actual = given |> prev interval
 
         actual |> should equal expected
         actual.ToDateTimeOffset().DayOfWeek |> toIsoDayOfWeek 
@@ -172,7 +171,7 @@ module WeeklyTests =
 
         let interval = Weekly { alarm = atTime; day = IsoDayOfWeek.Friday }
 
-        let actual = given |> AlarmInterval.next interval
+        let actual = given |> next interval
 
         actual |> should equal expected
     
@@ -198,7 +197,7 @@ module WeeklyTests =
 
         let interval = Weekly { alarm = atTime; day = IsoDayOfWeek.Friday }
 
-        let actual = given |> AlarmInterval.prev interval
+        let actual = given |> prev interval
 
         actual |> should equal expected
 
@@ -227,8 +226,8 @@ module FortnightlyAndBiWeeklyTests =
         let interval = Fortnightly { alarm = atTime; day = IsoDayOfWeek.Friday }
         let interval' = BiWeekly { alarm = atTime; day = IsoDayOfWeek.Friday }
 
-        let actual = given |> AlarmInterval.next interval
-        let actual' = given |> AlarmInterval.next interval'
+        let actual = given |> next interval
+        let actual' = given |> next interval'
 
         actual |> should equal expected
         actual' |> should equal expected
@@ -256,8 +255,8 @@ module FortnightlyAndBiWeeklyTests =
         let interval = Fortnightly { alarm = atTime; day = IsoDayOfWeek.Friday }
         let interval' = BiWeekly { alarm = atTime; day = IsoDayOfWeek.Friday }
 
-        let actual = given |> AlarmInterval.prev interval
-        let actual' = given |> AlarmInterval.prev interval'
+        let actual = given |> prev interval
+        let actual' = given |> prev interval'
 
         actual |> should equal expected
         actual' |> should equal expected
@@ -288,7 +287,7 @@ module MonthlyTests =
 
         let interval = Monthly { alarm = atTime; modifier = adjStrategy; day = dom }
 
-        let actual = given |> AlarmInterval.next interval
+        let actual = given |> next interval
 
         actual |> should equal expected
     
@@ -314,7 +313,7 @@ module MonthlyTests =
 
         let interval = Monthly { alarm = atTime; modifier = adjStrategy; day = dom }
 
-        let actual = given |> AlarmInterval.prev interval
+        let actual = given |> prev interval
 
         actual |> should equal expected
 
@@ -340,7 +339,7 @@ module AnnuallyTests =
 
         let interval = Annually { alarm = atTime; modifier = adjStrategy; date = date; adjustment = Specific }
 
-        let actual = given |> AlarmInterval.next interval
+        let actual = given |> next interval
 
         actual |> should equal expected
     
@@ -364,7 +363,7 @@ module AnnuallyTests =
 
         let interval = Annually { alarm = atTime; modifier = adjStrategy; date = date; adjustment = Specific }
 
-        let actual = given |> AlarmInterval.prev interval
+        let actual = given |> prev interval
 
         actual |> should equal expected
 
@@ -389,7 +388,7 @@ module SemiMonthlyTests =
         let interval = SemiMonthly { alarm = atTime; modifier = DayAdjustmentStrategy.WorkingDayBefore; 
                                      firstDay = DayOfMonth.Fifteenth; secondDay = DayOfMonth.Last }
 
-        let actual = given |> AlarmInterval.next interval
+        let actual = given |> next interval
 
         actual |> should equal expected
     
@@ -412,7 +411,7 @@ module SemiMonthlyTests =
         let interval = SemiMonthly { alarm = atTime; modifier = DayAdjustmentStrategy.WorkingDayBefore; 
                                      firstDay = DayOfMonth.Last; secondDay = DayOfMonth.Fifteenth }
 
-        let actual = given |> AlarmInterval.prev interval
+        let actual = given |> prev interval
 
         actual |> should equal expected
 
@@ -433,7 +432,7 @@ module SemiAnnuallyTests =
         let interval = SemiAnnually { alarm = atTime; modifier = DayAdjustmentStrategy.WorkingDayBefore; 
                                       date = AnnualDate(9, 15); adjustment = Specific }
 
-        let actual = given |> AlarmInterval.next interval
+        let actual = given |> next interval
 
         actual |> should equal expected
     
@@ -452,7 +451,7 @@ module SemiAnnuallyTests =
         let interval = SemiAnnually { alarm = atTime; modifier = DayAdjustmentStrategy.WorkingDayBefore; 
                                       date = AnnualDate(3, 15); adjustment = Specific }
 
-        let actual = given |> AlarmInterval.prev interval
+        let actual = given |> prev interval
 
         actual |> should equal expected
 
@@ -473,7 +472,7 @@ module QuarterlyTests =
         let interval = Quarterly { alarm = atTime; modifier = DayAdjustmentStrategy.WorkingDayBefore; 
                                    date = AnnualDate(3, 15); adjustment = Specific }
 
-        let actual = given |> AlarmInterval.next interval
+        let actual = given |> next interval
 
         actual |> should equal expected
     
@@ -492,6 +491,6 @@ module QuarterlyTests =
         let interval = Quarterly { alarm = atTime; modifier = DayAdjustmentStrategy.WorkingDayBefore; 
                                    date = AnnualDate(9, 15); adjustment = Specific }
 
-        let actual = given |> AlarmInterval.prev interval
+        let actual = given |> prev interval
 
         actual |> should equal expected
