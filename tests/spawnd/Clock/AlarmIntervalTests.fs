@@ -45,7 +45,7 @@ module WeekdayTests =
         let atTime = { time = LocalTime(hour, min, 10); 
                        zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZone) }
 
-        let interval = Daily { alarm = atTime; kind = Weekdays }
+        let interval = Daily { alarm = atTime; kind = DailyKind.Weekdays }
 
         let actual = given |> next interval
 
@@ -75,7 +75,7 @@ module WeekdayTests =
         let atTime = { time = LocalTime(hour, min, 10);
                        zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZone) }
 
-        let interval = Daily { alarm = atTime; kind = Weekdays }
+        let interval = Daily { alarm = atTime; kind = DailyKind.Weekdays }
 
         let actual = given |> prev interval
 
@@ -108,7 +108,7 @@ module WeekendTests =
         let atTime = { time = LocalTime(hour, min, 10);
                        zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZone) }
 
-        let interval = Daily { alarm = atTime; kind = Weekends }
+        let interval = Daily { alarm = atTime; kind = DailyKind.Weekends }
 
         let actual = given |> next interval
 
@@ -137,7 +137,7 @@ module WeekendTests =
         let atTime = { time = LocalTime(hour, min, 10); 
                        zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZone) }
 
-        let interval = Daily { alarm = atTime; kind = Weekends }
+        let interval = Daily { alarm = atTime; kind = DailyKind.Weekends }
 
         let actual = given |> prev interval
 
@@ -224,13 +224,10 @@ module FortnightlyAndBiWeeklyTests =
                        zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZone) }
 
         let interval = Fortnightly { alarm = atTime; day = IsoDayOfWeek.Friday }
-        let interval' = BiWeekly { alarm = atTime; day = IsoDayOfWeek.Friday }
 
         let actual = given |> next interval
-        let actual' = given |> next interval'
 
         actual |> should equal expected
-        actual' |> should equal expected
     
     [<Theory>]
     [<InlineData("2018-10-11T18:00:11-0700", 2, 0, @"Europe/London", "2018-10-05T02:00:10+0100")>]
@@ -253,13 +250,10 @@ module FortnightlyAndBiWeeklyTests =
                        zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZone) }
 
         let interval = Fortnightly { alarm = atTime; day = IsoDayOfWeek.Friday }
-        let interval' = BiWeekly { alarm = atTime; day = IsoDayOfWeek.Friday }
 
         let actual = given |> prev interval
-        let actual' = given |> prev interval'
 
         actual |> should equal expected
-        actual' |> should equal expected
 
 module MonthlyTests =
 
@@ -279,7 +273,10 @@ module MonthlyTests =
     let ``Return UK next value given California value`` 
         (givenCA, dayOfMonth, strategy, hour, min, timeZone, expectedUK) =
         let given = DateTimeOffset.Parse(givenCA) |> toInstant
-        let dom = Enum.Parse(typeof<DayOfMonth>, string dayOfMonth) :?> DayOfMonth
+        let dom = match dayOfMonth with
+                  | x when x = 32 -> Last
+                  | x when x > 0 && x < 32 -> Day x
+                  | x -> failwithf "%d: Illegal day of month value" x
         let adjStrategy = toDayAdjustmentStrategy strategy
         let expected = DateTimeOffset.Parse(expectedUK) |> toInstant
         let atTime = { time = LocalTime(hour, min, 10); 
@@ -305,7 +302,10 @@ module MonthlyTests =
     let ``Return UK previous value given California value`` 
         (givenCA, dayOfMonth, strategy, hour, min, timeZone, expectedUK) =
         let given = DateTimeOffset.Parse(givenCA) |> toInstant
-        let dom = Enum.Parse(typeof<DayOfMonth>, string dayOfMonth) :?> DayOfMonth
+        let dom = match dayOfMonth with
+                  | x when x = 32 -> Last
+                  | x when x > 0 && x < 32 -> Day x
+                  | x -> failwithf "%d: Illegal day of month value" x
         let adjStrategy = toDayAdjustmentStrategy strategy
         let expected = DateTimeOffset.Parse(expectedUK) |> toInstant
         let atTime = { time = LocalTime(hour, min, 10); 
@@ -337,7 +337,8 @@ module AnnuallyTests =
         let atTime = { time = LocalTime(hour, min, 10); 
                        zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZone) }
 
-        let interval = Annually { alarm = atTime; modifier = adjStrategy; date = date; adjustment = Specific }
+        let interval = Annually { alarm = atTime; modifier = adjStrategy;
+                                  date = date; adjustment = DateAdjustmentStrategy.Specific }
 
         let actual = given |> next interval
 
@@ -361,7 +362,8 @@ module AnnuallyTests =
         let atTime = { time = LocalTime(hour, min, 10); 
                        zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZone) }
 
-        let interval = Annually { alarm = atTime; modifier = adjStrategy; date = date; adjustment = Specific }
+        let interval = Annually { alarm = atTime; modifier = adjStrategy;
+                                  date = date; adjustment = DateAdjustmentStrategy.Specific }
 
         let actual = given |> prev interval
 
@@ -386,7 +388,7 @@ module SemiMonthlyTests =
                        zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZone) }
         
         let interval = SemiMonthly { alarm = atTime; modifier = DayAdjustmentStrategy.WorkingDayBefore; 
-                                     firstDay = DayOfMonth.Fifteenth; secondDay = DayOfMonth.Last }
+                                     firstDay = Day 15; secondDay = Last }
 
         let actual = given |> next interval
 
@@ -409,7 +411,7 @@ module SemiMonthlyTests =
                        zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZone) }
         
         let interval = SemiMonthly { alarm = atTime; modifier = DayAdjustmentStrategy.WorkingDayBefore; 
-                                     firstDay = DayOfMonth.Last; secondDay = DayOfMonth.Fifteenth }
+                                     firstDay = Last; secondDay = Day 15 }
 
         let actual = given |> prev interval
 
@@ -430,7 +432,7 @@ module SemiAnnuallyTests =
                        zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(@"Europe/London") }
 
         let interval = SemiAnnually { alarm = atTime; modifier = DayAdjustmentStrategy.WorkingDayBefore; 
-                                      date = AnnualDate(9, 15); adjustment = Specific }
+                                      date = AnnualDate(9, 15); adjustment = DateAdjustmentStrategy.Specific }
 
         let actual = given |> next interval
 
@@ -449,7 +451,7 @@ module SemiAnnuallyTests =
                        zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(@"Europe/London") }
 
         let interval = SemiAnnually { alarm = atTime; modifier = DayAdjustmentStrategy.WorkingDayBefore; 
-                                      date = AnnualDate(3, 15); adjustment = Specific }
+                                      date = AnnualDate(3, 15); adjustment = DateAdjustmentStrategy.Specific }
 
         let actual = given |> prev interval
 
@@ -470,7 +472,7 @@ module QuarterlyTests =
                        zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(@"Europe/London") }
 
         let interval = Quarterly { alarm = atTime; modifier = DayAdjustmentStrategy.WorkingDayBefore; 
-                                   date = AnnualDate(3, 15); adjustment = Specific }
+                                   date = AnnualDate(3, 15); adjustment = DateAdjustmentStrategy.Specific }
 
         let actual = given |> next interval
 
@@ -489,7 +491,7 @@ module QuarterlyTests =
                        zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(@"Europe/London") }
 
         let interval = Quarterly { alarm = atTime; modifier = DayAdjustmentStrategy.WorkingDayBefore; 
-                                   date = AnnualDate(9, 15); adjustment = Specific }
+                                   date = AnnualDate(9, 15); adjustment = DateAdjustmentStrategy.Specific }
 
         let actual = given |> prev interval
 

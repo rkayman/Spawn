@@ -1,8 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
     <RootNamespace>Spawn</RootNamespace>
+    <Title>Spawn Daemon</Title>
+    <Authors>Robert Kayman</Authors>
+    <Description>A cron-like daemon with low system resource usage.</Description>
+    <Copyright>Copyright © 2018 Robert Kayman. All rights reserved.</Copyright>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>
@@ -10,13 +22,17 @@
     <Compile Include="Clock\AlarmClock.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Console.fs" />
+    <Compile Include="Configuration.fs" />
+    <Compile Include="Messaging.fs" />
     <Compile Include="Scheduler.fs" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NodaTime" Version="2.4.4" />
-    <PackageReference Include="FSharp.Control.Reactive" Version="4.1.0" />
-    <PackageReference Update="FSharp.Core" Version="4.5.4" />
+    <PackageReference Include="Fleece.FSharpData" Version="0.8.0-alpha-3" />
+    <PackageReference Include="FSharp.Data" Version="3.1.1" />
+    <PackageReference Include="FSharpPlus" Version="1.1.0-CI00252" />
+    <PackageReference Include="NodaTime" Version="2.4.5" />
+    <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
   </ItemGroup>
 
 </Project>

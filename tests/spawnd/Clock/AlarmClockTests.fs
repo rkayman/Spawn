@@ -15,8 +15,8 @@ open Spawn.Clock.Time
 open Spawn.Clock.Time.Intervals
 
 
-let private oneSec = Sec 1L
-let private oneMin = Min 1L
+let private oneSec = Seconds 1L
+let private oneMin = Minutes 1L
 
 
 module BalanceWheelTests =
@@ -36,7 +36,7 @@ module BalanceWheelTests =
                  |> Observable.map (fun x -> x.Count)
 
         let actual = TestSchedule.startObservable sched hb 
-                     |> TestObserver.all
+                     |> TestObserver.messages
                      |> TestNotification.unwrap
         
         actual |> should haveLength expected.Length
@@ -49,7 +49,7 @@ module BalanceWheelTests =
     [<InlineData(10)>]
     let ``BalanceWheel coils at given rate per second`` num =
         let sched = HistoricalScheduler(DateTimeOffset.Now)
-        let rate = PerSec (int64 num)
+        let rate = PerSecond (int64 num)
 
         BalanceWheel.startOn rate.TimeSpan sched
         |> Observable.toList
@@ -68,9 +68,9 @@ module AlarmTests =
     [<InlineData(5)>]
     let ``Alarm notifies at given rate per minute`` num =
         let sched = HistoricalScheduler(DateTimeOffset.Now)
-        let rate = PerMin (int64 num)
+        let rate = PerMinute (int64 num)
 
-        Alarm.scheduleOn (Every (Rate rate, None)) sched None
+        Alarm.scheduleOn (Every (rate, After None)) sched None
         |> Observable.toList
         |> Observable.subscribe (fun lst -> lst |> should haveCount num)
         |> ignore
@@ -85,11 +85,11 @@ module AlarmTests =
     [<InlineData(7)>]
     let ``Alarm notifies after delay at given rate per minute`` num =
         let sched = TestScheduler()
-        let rate = PerMin (int64 num)
-        let startAt = sched.Now + oneMin.TimeSpan - oneSec.TimeSpan
+        let rate = PerMinute (int64 num)
+        let startAt = sched.Now + oneMin.TimeSpan - oneSec.TimeSpan |> Some
 
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Every (Rate rate, Some startAt)) sched None
+        Alarm.scheduleOn (Every (rate, After startAt)) sched None
         |> Observable.subscribe (actual.Add)
         |> ignore
 
@@ -103,14 +103,14 @@ module AlarmTests =
     let ``Alarm is cancelled before notifying`` () =
         let sched = HistoricalScheduler(DateTimeOffset.Now)
         let actual = ResizeArray<PetitSonnerie>()
-        let rate = PerMin 5L
-        let startAt = sched.Now + oneMin.TimeSpan
+        let rate = PerMinute 5L
+        let startAt = sched.Now + oneMin.TimeSpan |> Some
 
-        let alarm = Alarm.scheduleOn (Every (Rate rate, Some startAt)) sched None
+        let alarm = Alarm.scheduleOn (Every (rate, After startAt)) sched None
                     |> Observable.toList
                     |> Observable.subscribe actual.AddRange
 
-        let advance = Sec 30L
+        let advance = Seconds 30L
         sched.AdvanceBy(advance.TimeSpan)
         alarm.Dispose()
         actual |> should be Empty
@@ -125,7 +125,7 @@ module AlarmTests =
         let sched = HistoricalScheduler(DateTimeOffset.Now)
         let rate = PerHour (int64 num)
 
-        Alarm.scheduleOn (Every (Rate rate, None)) sched None
+        Alarm.scheduleOn (Every (rate, After None)) sched None
         |> Observable.toList
         |> Observable.subscribe (fun lst -> lst |> should haveCount num)
         |> ignore
@@ -143,7 +143,7 @@ module AlarmTests =
         let sched = HistoricalScheduler(DateTimeOffset.Now)
         let rate = PerDay (int64 num)
 
-        Alarm.scheduleOn (Every (Rate rate, None)) sched None
+        Alarm.scheduleOn (Every (rate, After None)) sched None
         |> Observable.toList
         |> Observable.subscribe (fun lst -> lst |> should haveCount num)
         |> ignore
@@ -155,11 +155,11 @@ module AlarmTests =
     let ``Alarm notifies every other week`` () =
         let sched = TestScheduler()
         let actual = ResizeArray<PetitSonnerie>()
-        let freq = Weeks 2L
+        let rate = Weeks 2L
         let recoilRate = (Days 1L).TimeSpan
         let week = (Weeks 1L).Value
 
-        Alarm.scheduleOn (Every (Frequency freq, None)) sched (Some recoilRate)
+        Alarm.scheduleOn (Every (rate, After None)) sched (Some recoilRate)
         |> Observable.subscribe actual.Add
         |> ignore
 
@@ -173,7 +173,7 @@ module AlarmTests =
     let ``Alarm notifies every Friday at 0200 eastern`` () =
         let now = DateTimeOffset(2019, 1, 1, 3, 0, 0, 0, TimeSpan.Zero)
         let sched = HistoricalScheduler(now)
-        let freq = Weeks 1L
+        let rate = Weeks 1L
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
 
@@ -186,12 +186,12 @@ module AlarmTests =
                          .ToDateTimeOffset()
         let nextRun = OffsetDateTime.FromDateTimeOffset(lastRun).With(next).ToDateTimeOffset()
 
-        Alarm.scheduleOn (Every (Frequency freq, Some lastRun)) sched (Some recoilRate)
+        Alarm.scheduleOn (Every (rate, After (Some lastRun))) sched (Some recoilRate)
         |> Observable.subscribe actual.Add
         |> ignore
 
         actual |> should be Empty
-        sched.AdvanceBy(freq.TimeSpan)
+        sched.AdvanceBy(rate.TimeSpan)
         actual |> should not' (be Empty)
         actual |> should haveCount 1
         actual.[0].Time.ToDateTimeOffset() |> Alarm.normalize recoilRate
@@ -205,13 +205,13 @@ module AlarmTests =
         
         let local = LocalTime(2, 0, 10)
         let dtz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(@"Europe/London")
-        let pattern = Weekly { alarm = { time = local; zone = dtz }; day = IsoDayOfWeek.Friday }
+        let interval = Weekly { alarm = { time = local; zone = dtz }; day = IsoDayOfWeek.Friday }
         
         let expected = DateTimeOffset(2018, 12, 28, 2, 0, 10, 0, TimeSpan.Zero) |> Instant.FromDateTimeOffset
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Schedule (pattern, None)) sched (Some recoilRate)
+        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -229,13 +229,13 @@ module AlarmTests =
         
         let local = LocalTime(2, 0, 10)
         let dtz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(@"Europe/London")
-        let pattern = Daily { alarm = { time = local; zone = dtz }; kind = Everyday }
+        let interval = Daily { alarm = { time = local; zone = dtz }; kind = DailyKind.Everyday }
         
         let expected = DateTimeOffset(2018, 12, 25, 2, 0, 10, 0, TimeSpan.Zero) |> Instant.FromDateTimeOffset
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Schedule (pattern, None)) sched (Some recoilRate)
+        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -253,13 +253,13 @@ module AlarmTests =
         
         let local = LocalTime(2, 0, 10)
         let dtz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(@"Europe/London")
-        let pattern = Daily { alarm = { time = local; zone = dtz }; kind = Weekdays }
+        let interval = Daily { alarm = { time = local; zone = dtz }; kind = DailyKind.Weekdays }
         
         let expected = DateTimeOffset(2018, 12, 25, 2, 0, 10, 0, TimeSpan.Zero) |> Instant.FromDateTimeOffset
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Schedule (pattern, None)) sched (Some recoilRate)
+        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -277,13 +277,13 @@ module AlarmTests =
         
         let local = LocalTime(2, 0, 10)
         let dtz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(@"Europe/London")
-        let pattern = Daily { alarm = { time = local; zone = dtz }; kind = Weekends }
+        let interval = Daily { alarm = { time = local; zone = dtz }; kind = DailyKind.Weekends }
         
         let expected = DateTimeOffset(2018, 12, 29, 2, 0, 10, 0, TimeSpan.Zero) |> Instant.FromDateTimeOffset
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Schedule (pattern, None)) sched (Some recoilRate)
+        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -301,13 +301,13 @@ module AlarmTests =
         
         let local = LocalTime(2, 0, 10)
         let dtz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(@"Europe/London")
-        let pattern = Fortnightly { alarm = { time = local; zone = dtz }; day = IsoDayOfWeek.Friday }
+        let interval = Fortnightly { alarm = { time = local; zone = dtz }; day = IsoDayOfWeek.Friday }
         
         let expected = DateTimeOffset(2018, 12, 28, 2, 0, 10, 0, TimeSpan.Zero) |> Instant.FromDateTimeOffset
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Schedule (pattern, None)) sched (Some recoilRate)
+        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -325,13 +325,13 @@ module AlarmTests =
         
         let alarm = { time = LocalTime(2, 0, 10);
                       zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(@"Europe/London") }
-        let pattern = Monthly { alarm = alarm; modifier = Rigid; day = DayOfMonth.Last }
+        let interval = Monthly { alarm = alarm; modifier = DayAdjustmentStrategy.Rigid; day = DayOfMonth.Last }
         
         let expected = DateTimeOffset(2018, 12, 31, 2, 0, 10, 0, TimeSpan.Zero) |> Instant.FromDateTimeOffset
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Schedule (pattern, None)) sched (Some recoilRate)
+        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -349,15 +349,15 @@ module AlarmTests =
         
         let alarm = { time = LocalTime(2, 0, 10);
                       zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(@"Europe/London") }
-        let pattern = SemiMonthly { alarm = alarm; modifier = WorkingDayBefore;
-                                    firstDay = DayOfMonth.First; secondDay = DayOfMonth.Fifteenth }
+        let interval = SemiMonthly { alarm = alarm; modifier = DayAdjustmentStrategy.WorkingDayBefore;
+                                     firstDay = Day 1; secondDay = Day 15 }
         
         let expected1 = DateTimeOffset(2018, 11, 30, 2, 0, 10, 0, TimeSpan.Zero) |> Instant.FromDateTimeOffset
         let expected2 = DateTimeOffset(2018, 12, 14, 2, 0, 10, 0, TimeSpan.Zero) |> Instant.FromDateTimeOffset
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Schedule (pattern, None)) sched (Some recoilRate)
+        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -376,14 +376,14 @@ module AlarmTests =
         
         let alarm = { time = LocalTime(2, 0, 10);
                       zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(@"Europe/London") }
-        let pattern = Annually { alarm = alarm; modifier = Rigid;
-                                 date = AnnualDate(6, 30); adjustment = Specific }
+        let interval = Annually { alarm = alarm; modifier = DayAdjustmentStrategy.Rigid;
+                                  date = AnnualDate(6, 30); adjustment = DateAdjustmentStrategy.Specific }
         
         let expected = DateTimeOffset(2018, 6, 30, 2, 0, 10, 0, TimeSpan.FromHours(1.0)) |> Instant.FromDateTimeOffset
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Schedule (pattern, None)) sched (Some recoilRate)
+        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -401,15 +401,15 @@ module AlarmTests =
         
         let alarm = { time = LocalTime(2, 0, 10);
                       zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(@"Europe/London") }
-        let pattern = SemiAnnually { alarm = alarm; modifier = WorkingDayBefore;
-                                     date = AnnualDate(6, 30); adjustment = Last }
+        let interval = SemiAnnually { alarm = alarm; modifier = DayAdjustmentStrategy.WorkingDayBefore;
+                                      date = AnnualDate(6, 30); adjustment = DateAdjustmentStrategy.Last }
         
         let expected1 = DateTimeOffset(2018, 6, 29, 2, 0, 10, 0, TimeSpan.FromHours(1.0)) |> Instant.FromDateTimeOffset
         let expected2 = DateTimeOffset(2018, 12, 31, 2, 0, 10, 0, TimeSpan.Zero) |> Instant.FromDateTimeOffset
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Schedule (pattern, None)) sched (Some recoilRate)
+        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -428,8 +428,8 @@ module AlarmTests =
         
         let alarm = { time = LocalTime(2, 0, 10);
                       zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(@"Europe/London") }
-        let pattern = Quarterly { alarm = alarm; modifier = WorkingDayBefore;
-                                  date = AnnualDate(3, 31); adjustment = Last }
+        let interval = Quarterly { alarm = alarm; modifier = DayAdjustmentStrategy.WorkingDayBefore;
+                                   date = AnnualDate(3, 31); adjustment = DateAdjustmentStrategy.Last }
         
         let expected1 = DateTimeOffset(2018, 3, 30, 2, 0, 10, 0, TimeSpan.FromHours(1.0)) |> Instant.FromDateTimeOffset
         let expected2 = DateTimeOffset(2018, 6, 29, 2, 0, 10, 0, TimeSpan.FromHours(1.0)) |> Instant.FromDateTimeOffset
@@ -438,7 +438,7 @@ module AlarmTests =
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Schedule (pattern, None)) sched (Some recoilRate)
+        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
         |> Observable.subscribe actual.Add
         |> ignore
         

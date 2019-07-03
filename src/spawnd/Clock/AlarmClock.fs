@@ -5,7 +5,7 @@ open FSharp.Control.Reactive
 open System.Reactive
 open System.Reactive.Concurrency
 open System
-open Spawn.Clock.Time
+open Time
 
 module BalanceWheel =
     
@@ -15,11 +15,9 @@ module BalanceWheel =
         override this.ToString() = 
             let instant = this.Timestamp.ToDateTimeOffset().ToString("HH:mm:ss.fff zzz")
             sprintf "Count = %03i; Timestamp = %s" this.Count instant
-
-    let inline private (!!) x = Instant.FromDateTimeOffset(x)
     
-    let inline private (!>) (x: Timestamped<int64>) = 
-        { Count = x.Value; Timestamp = !! x.Timestamp }
+    let inline private (!>) (x: Timestamped<int64>) =
+        { Count = x.Value; Timestamp = Instant.FromDateTimeOffset(x.Timestamp) }
 
     let private startInternal interval timestamp recoilRate =
         recoilRate |> interval
@@ -123,21 +121,19 @@ module Repeater =
 
 
 module Alarm =
-    
-    open Spawn.Clock.Time.Intervals
+    open Utilities
+    open Time.Intervals
 
-    type Configuration = 
-    | OnceAt of DateTimeOffset
-    | OnceAfter of TimeSpan
-    | Every of RepeatPattern * DateTimeOffset option
-    | Schedule of AlarmInterval * Instant option
-    | Never
-    and RepeatPattern =
-    | Frequency of Frequency
-    | Rate of Rate
-    | Interval of TimeSpan
+    type Occurrence = 
+        | OnceAt of DateTimeOffset
+        | OnceAfter of TimeSpan
+        | Every of Rate * After
+        | Repeat of Interval * Starting
+        | Never
+    and After = After of DateTimeOffset option
+    and Starting = Starting of Instant option
     
-    let private defRecoilRate = (Ms 333L).TimeSpan
+    let private defRecoilRate = (Milliseconds 333L).TimeSpan
 
     let private recoils = BalanceWheel.start defRecoilRate
 
@@ -149,36 +145,22 @@ module Alarm =
         let m = if span.Hours > 0 then 0 else source.Minute
         DateTimeOffset(source.Year, source.Month, source.Day, source.Hour, m, s, 0, source.Offset)
 
-    let asTimeSpan = function
-        | Interval x -> x
-        | Rate x -> x.TimeSpan
-        | Frequency x -> x.TimeSpan
-
-    let asTicks = function
-        | Interval x -> x.Ticks
-        | Rate x -> x.Value
-        | Frequency x -> x.Value
-
-    type RepeatPattern with
-        member this.TimeSpan with get() = asTimeSpan this
-        member this.Ticks with get() = asTicks this
-
     let schedule config =
         match config with
         | Never -> Repeater.strikeNever
         | OnceAt due -> Repeater.strikeOnce (Choice1Of2 due) recoils
         | OnceAfter delay -> Repeater.strikeOnce (Choice2Of2 delay) recoils
-        | Every (period, startAt) -> 
-            let period' = period.TimeSpan
-            let defaultStart = DateTimeOffset.Now.Subtract(period')
-            let startAt' = startAt |> Option.defaultValue defaultStart
-            recoils |> Observable.skipUntil (normalize period' startAt')
-                    |> Repeater.strikeEvery period' startAt'
-        | Schedule (pattern, last) ->
-            let instant = Instant.FromDateTimeOffset(DateTimeOffset.Now)
-            let defaultStart = prev pattern instant
-            let last' = last |> Option.defaultValue defaultStart
-            recoils |> Repeater.strike pattern last'
+        | Every (rate, After delay) ->
+            let rate' = rate.TimeSpan
+            let defaultStart = DateTimeOffset.Now.Subtract(rate')
+            let delay' = delay |> Option.defaultValue defaultStart
+            recoils |> Observable.skipUntil (normalize rate' delay')
+                    |> Repeater.strikeEvery rate' delay'
+        | Repeat (interval, Starting latest) ->
+            let instant = now()
+            let defaultStart = prev interval instant
+            let last = latest |> Option.defaultValue defaultStart
+            recoils |> Repeater.strike interval last
 
     let scheduleOn config scheduler recoilRate =
         let source = recoilsOn scheduler recoilRate
@@ -186,16 +168,16 @@ module Alarm =
         | Never -> Repeater.strikeNever
         | OnceAt due -> Repeater.strikeOnceOn (Choice1Of2 due) scheduler source
         | OnceAfter delay -> Repeater.strikeOnceOn (Choice2Of2 delay) scheduler source
-        | Every (period, startAt) -> 
-            let period' = period.TimeSpan
+        | Every (rate, After delay) ->
+            let rate' = rate.TimeSpan
             let defaultStart = if scheduler.Now = DateTimeOffset.MinValue ||
-                                  scheduler.Now - DateTimeOffset.MinValue < period' 
+                                  scheduler.Now - DateTimeOffset.MinValue < rate'
                                then scheduler.Now
-                               else scheduler.Now.Subtract(period')
-            let startAt' = startAt |> Option.defaultValue defaultStart
-            source |> Observable.skipUntilOn scheduler startAt'
-                   |> Repeater.strikeEveryOn period' startAt' scheduler
-        | Schedule (pattern, last) ->
+                               else scheduler.Now.Subtract(rate')
+            let delay' = delay |> Option.defaultValue defaultStart
+            source |> Observable.skipUntilOn scheduler delay'
+                   |> Repeater.strikeEveryOn rate' delay' scheduler
+        | Repeat (interval, Starting latest) ->
             let defaultStart = Instant.FromDateTimeOffset(scheduler.Now)
-            let last' = last |> Option.defaultValue defaultStart
-            source |> Repeater.strikeOn pattern last' scheduler
+            let last = latest |> Option.defaultValue defaultStart
+            source |> Repeater.strikeOn interval last scheduler

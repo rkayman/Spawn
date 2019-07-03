@@ -1,13 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
 
     <IsPackable>false</IsPackable>
 
     <Authors>Robert Kayman</Authors>
 
     <Copyright>Copyright © 2019. All rights reserved.</Copyright>
+
+    <TargetFramework>netcoreapp2.2</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,13 +18,12 @@
   <ItemGroup>
     <PackageReference Include="FsUnit" Version="3.4.0" />
     <PackageReference Include="FsUnit.Xunit" Version="3.4.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.9.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.1.1" />
     <PackageReference Include="xunit" Version="2.4.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.1" />
-    <PackageReference Include="FSharp.Control.Reactive" Version="4.1.0" />
-    <PackageReference Include="FSharp.Control.Reactive.Testing" Version="4.1.0" />
-    <PackageReference Include="NodaTime" Version="2.4.4" />
-    <PackageReference Update="FSharp.Core" Version="4.5.4" />
+    <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
+    <PackageReference Include="FSharp.Control.Reactive.Testing" Version="4.2.0" />
+    <PackageReference Include="NodaTime" Version="2.4.5" />
   </ItemGroup>
 
   <ItemGroup>

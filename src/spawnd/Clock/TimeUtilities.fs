@@ -3,9 +3,12 @@ namespace Spawn.Clock
 open NodaTime
 open System
 
+
 module Utilities =
 
     type TimeAdjusters = ToSecond | ToMinute | ToHour
+    
+    let now() = SystemClock.Instance.GetCurrentInstant()
 
     let toInstant (dt: ValueType) =
         match dt with
@@ -52,63 +55,53 @@ module Utilities =
 
 
 module Time =
-
-    type Frequency =
-        | Ticks of int64
-        | Ms of int64
-        | Sec of int64
-        | Min of int64
-        | Hours of int64
-        | Days of int64
-        | Weeks of int64
-
+    
     type Rate =
-        | PerSec of int64
-        | PerMin of int64
-        | PerHour of int64
-        | PerDay of int64
+        | Ticks        of int64
+        | Milliseconds of int64
+        | Seconds      of int64
+        | Minutes      of int64
+        | Hours        of int64
+        | Days         of int64
+        | Weeks        of int64
+        | PerSecond    of int64
+        | PerMinute    of int64
+        | PerHour      of int64
+        | PerDay       of int64
         
-    let private frequency = function
-        | Ticks t -> t
-        | Ms ms -> ms * NodaConstants.TicksPerMillisecond
-        | Sec s -> s * NodaConstants.TicksPerSecond
-        | Min m -> m * NodaConstants.TicksPerMinute
-        | Hours h -> h * NodaConstants.TicksPerHour
-        | Days d -> d * NodaConstants.TicksPerDay
-        | Weeks w -> w * NodaConstants.TicksPerWeek
-
-    type Frequency with
-        member this.Value with get() = frequency this
-        member this.TimeSpan with get() = this |> (frequency >> TimeSpan.FromTicks)
-        
-    let private computeRate ((rate, period, ticks): int64 * decimal * int64) = 
+    let private computeRate rate period ticks =
         let r, t = decimal rate, decimal ticks
         Math.Round(period / r, 3) * t |> int64
-
-    let private rate = function
-        | PerSec s -> (s, 1000m, NodaConstants.TicksPerMillisecond) |> computeRate
-        | PerMin m -> (m, 60m, NodaConstants.TicksPerSecond) |> computeRate
-        | PerHour h -> (h, 60m, NodaConstants.TicksPerMinute) |> computeRate
-        | PerDay d -> (d, 24m, NodaConstants.TicksPerHour) |> computeRate
+        
+    let private frequency = function
+        | Ticks        t  -> t
+        | Milliseconds ms -> ms * NodaConstants.TicksPerMillisecond
+        | Seconds      s  -> s * NodaConstants.TicksPerSecond
+        | Minutes      m  -> m * NodaConstants.TicksPerMinute
+        | Hours        h  -> h * NodaConstants.TicksPerHour
+        | Days         d  -> d * NodaConstants.TicksPerDay
+        | Weeks        w  -> w * NodaConstants.TicksPerWeek
+        | PerSecond    s  -> (s, 1000m, NodaConstants.TicksPerMillisecond) |||> computeRate
+        | PerMinute    m  -> (m, 60m, NodaConstants.TicksPerSecond) |||> computeRate
+        | PerHour      h  -> (h, 60m, NodaConstants.TicksPerMinute) |||> computeRate
+        | PerDay       d  -> (d, 24m, NodaConstants.TicksPerHour) |||> computeRate
     
     type Rate with
-        member this.Value with get() = rate this
-        member this.TimeSpan with get() = this |> (rate >> TimeSpan.FromTicks)
+        member this.Value with get() = frequency this
+        member this.TimeSpan with get() = this |> (frequency >> TimeSpan.FromTicks)
     
     module Intervals =
-        
         open Utilities
     
-        type AlarmInterval =
-            | Daily of DailyInterval
-            | Weekly of WeeklyInterval
-            | Fortnightly of WeeklyInterval
-            | BiWeekly of WeeklyInterval
-            | SemiMonthly of TwiceMonthlyInterval
-            | Monthly of MonthlyInterval
-            | Quarterly of AnnualInterval
+        type Interval =
+            | Daily        of DailyInterval
+            | Weekly       of WeeklyInterval
+            | Fortnightly  of WeeklyInterval
+            | SemiMonthly  of TwiceMonthlyInterval
+            | Monthly      of MonthlyInterval
+            | Quarterly    of AnnualInterval
             | SemiAnnually of AnnualInterval
-            | Annually of AnnualInterval
+            | Annually     of AnnualInterval
         and AlarmTime = { time: LocalTime; zone: DateTimeZone }
         and DailyInterval = { alarm: AlarmTime; kind: DailyKind }
         and WeeklyInterval = { alarm: AlarmTime; day: IsoDayOfWeek }
@@ -117,39 +110,12 @@ module Time =
                                      firstDay: DayOfMonth; secondDay: DayOfMonth }
         and AnnualInterval = { alarm: AlarmTime; modifier: DayAdjustmentStrategy;
                                date: AnnualDate; adjustment: DateAdjustmentStrategy }
-        and DayAdjustmentStrategy = Rigid | WorkingDayBefore | WorkingDayClosest
-        and DateAdjustmentStrategy = Specific | Last
-        and DailyKind = Everyday | Weekdays | Weekends
+        and DailyKind = Everyday = 0 | Weekdays = 1 | Weekends = 2
+        and DayAdjustmentStrategy = Rigid = 0 | WorkingDayBefore = 1 | WorkingDayClosest = 2
+        and DateAdjustmentStrategy = Specific = 0 | Last = 1
         and DayOfMonth =
-            | First         = 1
-            | Second        = 2
-            | Third         = 3
-            | Fourth        = 4
-            | Fifth         = 5
-            | Sixth         = 6
-            | Seventh       = 7
-            | Eighth        = 8
-            | Nineth        = 9
-            | Tenth         = 10
-            | Eleventh      = 11
-            | Twelfth       = 12
-            | Thirteenth    = 13
-            | Fourteenth    = 14
-            | Fifteenth     = 15
-            | Sixteenth     = 16
-            | Seventeenth   = 17
-            | Eighteenth    = 18
-            | Nineteenth    = 19
-            | Twentieth     = 20
-            | TwentyFirst   = 21
-            | TwentySecond  = 22
-            | TwentyThird   = 23
-            | TwentyFourth  = 24
-            | TwentyFifth   = 25
-            | TwentySixth   = 26
-            | TwentySeventh = 27
-            | TwentyEighth  = 28
-            | Last          = 32
+            | Day of int
+            | Last
     
     
         let inline private validate day msg =
@@ -169,9 +135,10 @@ module Time =
             | _ -> date
     
         let internal dayAdjuster = function
-            | Rigid -> id
-            | WorkingDayBefore -> onOrBefore
-            | WorkingDayClosest -> onOrClosest
+            | DayAdjustmentStrategy.Rigid -> id
+            | DayAdjustmentStrategy.WorkingDayBefore -> onOrBefore
+            | DayAdjustmentStrategy.WorkingDayClosest -> onOrClosest
+            | _ -> invalidArg "modifier" "DayAdjustmentStrategy can be Rigid, WorkingDayBefore or WorkingDayClosest"
      
         let inline private fromFunc<'a> func = FuncConvert.FromFunc<'a, 'a> func
     
@@ -180,7 +147,7 @@ module Time =
         let private dedup pattern =
             match pattern with
             | Daily { alarm = x } -> x
-            | Weekly { alarm = x } | Fortnightly { alarm = x } | BiWeekly { alarm = x } -> x
+            | Weekly { alarm = x } | Fortnightly { alarm = x } -> x
             | SemiMonthly { alarm = x } -> x
             | Monthly { alarm = x } -> x
             | Quarterly { alarm = x } | SemiAnnually { alarm = x } | Annually { alarm = x } -> x
@@ -201,9 +168,10 @@ module Time =
                                      prevIndices = ([6;6;6;6;6;6;5;6], [6;6;6;6;6;6;6;5]) }
     
             let private setup = function
-                | Everyday -> everyday
-                | Weekdays -> weekdays
-                | Weekends -> weekends
+                | DailyKind.Everyday -> everyday
+                | DailyKind.Weekdays -> weekdays
+                | DailyKind.Weekends -> weekends
+                | _ -> invalidArg "kind" "Kind can be Everyday, Weekdays or Weekends"
     
             let private (>!<) adjuster =
                 [1..7] |> Seq.cast<IsoDayOfWeek>
@@ -289,8 +257,8 @@ module Time =
             let inline private monthAdjuster offset (date: LocalDate) = date.PlusMonths(offset)
     
             let private dateAdjuster = function 
-                | DayOfMonth.Last -> DateAdjusters.EndOfMonth |> fromFunc
-                | day -> DateAdjusters.DayOfMonth(int day) |> fromFunc
+                | Last -> DateAdjusters.EndOfMonth |> fromFunc
+                | Day n -> DateAdjusters.DayOfMonth(n) |> fromFunc
     
             let inline private monthly (pattern: MonthlyInterval) offset =
                 monthAdjuster offset >> dateAdjuster pattern.day >> dayAdjuster pattern.modifier
@@ -338,7 +306,7 @@ module Time =
             open Period
             
             let private dateAdjuster adjust (date: LocalDate) =
-                if adjust = Last then date.With(DateAdjusters.EndOfMonth) else date
+                if adjust = DateAdjustmentStrategy.Last then date.With(DateAdjusters.EndOfMonth) else date
     
             let inline private yearlyAdjuster offset (date: LocalDate) = date.PlusYears(offset)
     
@@ -413,14 +381,14 @@ module Time =
         let private getAdjuster = function
             | Daily x -> (Daily.next x, Daily.prev x)
             | Weekly x -> (Weekly.next x, Weekly.prev x)
-            | Fortnightly x | BiWeekly x -> (Fortnightly.next x, Fortnightly.prev x)
+            | Fortnightly x -> (Fortnightly.next x, Fortnightly.prev x)
             | Monthly x -> (Monthly.next x, Monthly.prev x)
             | SemiMonthly x -> (SemiMonthly.next x, SemiMonthly.prev x)
             | Quarterly x -> (Quarterly.next x, Quarterly.prev x)
             | SemiAnnually x -> (SemiAnnually.next x, SemiAnnually.prev x)
             | Annually x -> (Annually.next x, Annually.prev x)
     
-        let private adjust chooser (interval: AlarmInterval) (instant: Instant) =
+        let private adjust chooser (interval: Interval) (instant: Instant) =
             let { time = time; zone = zone } = dedup interval
             let zdt = instant |> toDateTimeOffset |> toZonedDateTime |> withZone (zone)
             let adjuster = interval |> getAdjuster |> chooser

@@ -1,24 +1,232 @@
 {
-    "dataSource":[{
-        "name": "Tiger Atom Feed - #1",
-        "sourceURL": "http://gate.pform.pwc-apps.com:18151",
-        "protocol": "http",
-        "format": "xml",
-        "feed": "atom",
-        "recordType": "workrecord",
-        "frequencyInSeconds": "3",
-        "batchSize": "100",
-        "maxRetries": "0"
-    },
-    {
-        "name": "Tiger Atom Feed - #2",
-        "sourceURL": "http://gate.pform.pwc-apps.com:18152",
-        "protocol": "http",
-        "format": "xml",
-        "feed": "atom",
-        "recordType": "client",
-        "frequencyInSeconds": "4",
-        "batchSize": "100",
-        "maxRetries": "1"
-    }]
+    "alarms":
+    [
+        {
+            "domain": "pwc-apps.com",
+            "name": "Tiger Atom Feed #1",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18151",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "work-record",
+                "batchSize": "100",
+                "maxRetries": "0"
+            },
+            "schedule":
+            {
+                "rate": {
+                    "scale": 4,
+                    "cadence": "PerHours"
+                }
+            }
+        },
+        {
+            "name": "Tiger Atom Feed #2",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18152",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "client",
+                "batchSize": "100",
+                "maxRetries": "1"
+            },
+            "schedule":
+            {
+                "rate": {
+                    "scale": 15,
+                    "cadence": "Minutes"
+                }
+            }
+        },
+        {
+            "name": "Tiger Atom Feed #3",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": "100",
+                "maxRetries": "3"
+            },
+            "schedule":
+            {
+                "daily": {
+                    "time": "12:00:00",
+                    "zone": "America/Los_Angeles",
+                    "kind": "Everyday"
+                }
+            }
+        },
+        {
+            "name": "Tiger Atom Feed #3",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": "100",
+                "maxRetries": "3"
+            },
+            "schedule":
+            {
+                "weekly": {
+                    "time": "12:00:00",
+                    "zone": "America/Los_Angeles",
+                    "day": "Friday"
+                }
+            }
+        },
+        {
+            "name": "Tiger Atom Feed #3",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": "100",
+                "maxRetries": "3"
+            },
+            "schedule":
+            {
+                "fortnightly": {
+                    "time": "12:00:00",
+                    "zone": "America/Los_Angeles",
+                    "day": "Saturday"
+                }
+            }
+        },
+        {
+            "name": "Tiger Atom Feed #3",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": "100",
+                "maxRetries": "3"
+            },
+            "schedule":
+            {
+                "semi-monthly": {
+                    "time": "12:00:00",
+                    "zone": "America/Los_Angeles",
+                    "modifier": "WorkingDayBefore",
+                    "firstDay": "15",
+                    "secondDay": "last"
+                }
+            }
+        },
+        {
+            "name": "Tiger Atom Feed #3",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": "100",
+                "maxRetries": "3"
+            },
+            "schedule":
+            {
+                "monthly": {
+                    "time": "12:00:00",
+                    "zone": "America/Los_Angeles",
+                    "modifier": "WorkingDayBefore",
+                    "day": "5"
+                }
+            }
+        },
+        {
+            "name": "Tiger Atom Feed #3",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": "100",
+                "maxRetries": "3"
+            },
+            "schedule":
+            {
+                "quarterly": {
+                    "time": "12:00:00",
+                    "zone": "America/Los_Angeles",
+                    "modifier": "Rigid",
+                    "date": "Mar-31",
+                    "adjustment": "last"
+                }
+            }
+        },
+        {
+            "name": "Tiger Atom Feed #3",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": "100",
+                "maxRetries": "3"
+            },
+            "schedule":
+            {
+                "semi-annually": {
+                    "time": "12:00:00",
+                    "zone": "America/Los_Angeles",
+                    "modifier": "WorkingDayClosest",
+                    "date": "Feb-03",
+                    "adjustment": "specific"
+                }
+            }
+        },
+        {
+            "name": "Tiger Atom Feed #3",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": "100",
+                "maxRetries": "3"
+            },
+            "schedule":
+            {
+                "annually": {
+                    "time": "12:00:00",
+                    "zone": "America/Los_Angeles",
+                    "modifier": "WorkingDayBefore",
+                    "date": "Apr-05",
+                    "adjustment": "specific"
+                }
+            }
+        }
+    ]
 }
