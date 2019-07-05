@@ -1,4 +1,4 @@
-module AlarmIntervalTests
+module spawnd.tests.Clock.AlarmIntervalTests
 
 open NodaTime
 open Xunit

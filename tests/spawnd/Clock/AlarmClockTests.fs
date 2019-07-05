@@ -1,4 +1,4 @@
-module ClockTests
+module spawnd.tests.Clock.ClockTests
 
 open NodaTime
 open Xunit
