@@ -11,14 +11,14 @@
                 "format": "xml",
                 "feed": "atom",
                 "recordType": "work-record",
-                "batchSize": "100",
-                "maxRetries": "0"
+                "batchSize": 100,
+                "maxRetries": 0
             },
             "schedule":
             {
                 "rate": {
                     "scale": 4,
-                    "cadence": "PerHours"
+                    "cadence": "PerHour"
                 }
             }
         },
@@ -32,8 +32,8 @@
                 "format": "xml",
                 "feed": "atom",
                 "recordType": "client",
-                "batchSize": "100",
-                "maxRetries": "1"
+                "batchSize": 100,
+                "maxRetries": 1
             },
             "schedule":
             {
@@ -53,8 +53,8 @@
                 "format": "xml",
                 "feed": "atom",
                 "recordType": "trips",
-                "batchSize": "100",
-                "maxRetries": "3"
+                "batchSize": 100,
+                "maxRetries": 3
             },
             "schedule":
             {
@@ -75,8 +75,8 @@
                 "format": "xml",
                 "feed": "atom",
                 "recordType": "trips",
-                "batchSize": "100",
-                "maxRetries": "3"
+                "batchSize": 100,
+                "maxRetries": 3
             },
             "schedule":
             {
@@ -97,8 +97,8 @@
                 "format": "xml",
                 "feed": "atom",
                 "recordType": "trips",
-                "batchSize": "100",
-                "maxRetries": "3"
+                "batchSize": 100,
+                "maxRetries": 3
             },
             "schedule":
             {
@@ -119,8 +119,8 @@
                 "format": "xml",
                 "feed": "atom",
                 "recordType": "trips",
-                "batchSize": "100",
-                "maxRetries": "3"
+                "batchSize": 100,
+                "maxRetries": 3
             },
             "schedule":
             {
@@ -143,8 +143,8 @@
                 "format": "xml",
                 "feed": "atom",
                 "recordType": "trips",
-                "batchSize": "100",
-                "maxRetries": "3"
+                "batchSize": 100,
+                "maxRetries": 3
             },
             "schedule":
             {
@@ -166,8 +166,8 @@
                 "format": "xml",
                 "feed": "atom",
                 "recordType": "trips",
-                "batchSize": "100",
-                "maxRetries": "3"
+                "batchSize": 100,
+                "maxRetries": 3
             },
             "schedule":
             {
@@ -190,8 +190,8 @@
                 "format": "xml",
                 "feed": "atom",
                 "recordType": "trips",
-                "batchSize": "100",
-                "maxRetries": "3"
+                "batchSize": 100,
+                "maxRetries": 3
             },
             "schedule":
             {
@@ -214,8 +214,8 @@
                 "format": "xml",
                 "feed": "atom",
                 "recordType": "trips",
-                "batchSize": "100",
-                "maxRetries": "3"
+                "batchSize": 100,
+                "maxRetries": 3
             },
             "schedule":
             {

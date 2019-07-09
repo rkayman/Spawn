@@ -18,12 +18,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Messaging.fs" />
     <Compile Include="Clock\TimeUtilities.fs" />
     <Compile Include="Clock\AlarmClock.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Console.fs" />
     <Compile Include="Configuration.fs" />
-    <Compile Include="Messaging.fs" />
     <Compile Include="Scheduler.fs" />
   </ItemGroup>
 
@@ -31,6 +31,7 @@
     <PackageReference Include="Fleece.FSharpData" Version="0.8.0-alpha-3" />
     <PackageReference Include="FSharp.Data" Version="3.1.1" />
     <PackageReference Include="FSharpPlus" Version="1.1.0-CI00252" />
+    <PackageReference Include="Logary" Version="5.0.0-rc.10" />
     <PackageReference Include="NodaTime" Version="2.4.5" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
   </ItemGroup>

@@ -191,25 +191,25 @@ module Configuration =
 
     let private annuallyCodec =
         fun t z m d a -> Annually { alarm = { time = t; zone =z }; modifier = m; date = d; adjustment = a }
-        <!> jreqWith localTimeCodec     "time"        (function Annually { alarm = { time = x } } -> Some x | _ -> None)
-        <*> jreqWith dateTimeZoneCodec  "zone"        (function Annually { alarm = { zone = x } } -> Some x | _ -> None)
-        <*> jreqWith dayAdjustmentCodec "modifier"    (function Annually { modifier = x } -> Some x | _ -> None)
+        <!> jreqWith localTimeCodec      "time"       (function Annually { alarm = { time = x } } -> Some x | _ -> None)
+        <*> jreqWith dateTimeZoneCodec   "zone"       (function Annually { alarm = { zone = x } } -> Some x | _ -> None)
+        <*> jreqWith dayAdjustmentCodec  "modifier"   (function Annually { modifier = x } -> Some x | _ -> None)
         <*> jreqWith annualDateCodec     "date"       (function Annually { date = x } -> Some x | _ -> None)
         <*> jreqWith dateAdjustmentCodec "adjustment" (function Annually { adjustment = x } -> Some x | _ -> None)
 
     let private semiAnnuallyCodec =
         fun t z m d a -> SemiAnnually { alarm = { time = t; zone =z }; modifier = m; date = d; adjustment = a }
-        <!> jreqWith localTimeCodec     "time"        (function SemiAnnually { alarm = { time = x } } -> Some x | _ -> None)
-        <*> jreqWith dateTimeZoneCodec  "zone"        (function SemiAnnually { alarm = { zone = x } } -> Some x | _ -> None)
-        <*> jreqWith dayAdjustmentCodec "modifier"    (function SemiAnnually { modifier = x } -> Some x | _ -> None)
+        <!> jreqWith localTimeCodec      "time"       (function SemiAnnually { alarm = { time = x } } -> Some x | _ -> None)
+        <*> jreqWith dateTimeZoneCodec   "zone"       (function SemiAnnually { alarm = { zone = x } } -> Some x | _ -> None)
+        <*> jreqWith dayAdjustmentCodec  "modifier"   (function SemiAnnually { modifier = x } -> Some x | _ -> None)
         <*> jreqWith annualDateCodec     "date"       (function SemiAnnually { date = x } -> Some x | _ -> None)
         <*> jreqWith dateAdjustmentCodec "adjustment" (function SemiAnnually { adjustment = x } -> Some x | _ -> None)
 
     let private quarterlyCodec =
         fun t z m d a -> Quarterly { alarm = { time = t; zone =z }; modifier = m; date = d; adjustment = a }
-        <!> jreqWith localTimeCodec     "time"        (function Quarterly { alarm = { time = x } } -> Some x | _ -> None)
-        <*> jreqWith dateTimeZoneCodec  "zone"        (function Quarterly { alarm = { zone = x } } -> Some x | _ -> None)
-        <*> jreqWith dayAdjustmentCodec "modifier"    (function Quarterly { modifier = x } -> Some x | _ -> None)
+        <!> jreqWith localTimeCodec      "time"       (function Quarterly { alarm = { time = x } } -> Some x | _ -> None)
+        <*> jreqWith dateTimeZoneCodec   "zone"       (function Quarterly { alarm = { zone = x } } -> Some x | _ -> None)
+        <*> jreqWith dayAdjustmentCodec  "modifier"   (function Quarterly { modifier = x } -> Some x | _ -> None)
         <*> jreqWith annualDateCodec     "date"       (function Quarterly { date = x } -> Some x | _ -> None)
         <*> jreqWith dateAdjustmentCodec "adjustment" (function Quarterly { adjustment = x } -> Some x | _ -> None)
             
