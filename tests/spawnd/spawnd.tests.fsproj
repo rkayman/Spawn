@@ -8,7 +8,7 @@
 
     <Copyright>Copyright © 2019. All rights reserved.</Copyright>
 
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,7 +19,7 @@
     <PackageReference Include="FSharp.Core" Version="4.6.2" />
     <PackageReference Include="FsUnit" Version="3.4.0" />
     <PackageReference Include="FsUnit.Xunit" Version="3.4.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.1.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.2.0" />
     <PackageReference Include="xunit" Version="2.4.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.1" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
