@@ -47,7 +47,7 @@ module Scheduler =
         | Schedule of Alarm
         | Info of CommandOption * AsyncReplyChannel<(Guid * AlarmKey) option>
             
-    let private alarmStorage (inbox: Agent<_>) =
+    let private alarmStorage (log: Agent<_>) (inbox: Agent<_>) =
         let alarmId = Guid.NewGuid()
         
         let mutable cnt = 0
@@ -73,13 +73,13 @@ module Scheduler =
                     
             finally
                 if cnt < 1 then
-                    alarmId.ToString("N").Substring(19) |> printfn "Completed Alarm agent: %s"
+                    alarmId.ToString("N").Substring(19) |> sprintf "Completed Alarm agent: %s" |> log.Post
                     cnt <- cnt + 1
         }
         loop alarmId None
             
-    type private AlarmActor(?token: CancellationToken) =
-        inherit AutoCancelActor<AlarmCommand>(alarmStorage, ?token = token)
+    type private AlarmActor(log, ?token: CancellationToken) =
+        inherit AutoCancelActor<AlarmCommand>(alarmStorage log, ?token = token)
         
         with
             member this.Schedule(alarm) = this.Agent.Post(Schedule alarm)
@@ -97,7 +97,7 @@ module Scheduler =
     type private AlarmDB = ConcurrentDictionary<AlarmKey, AlarmValue>
     type private AlarmKVP = KeyValuePair<AlarmKey, AlarmValue>
     
-    let private alarmAccess (token: CancellationToken) (inbox: Agent<_>) =
+    let private alarmAccess log token (inbox: Agent<_>) =
         let alarms = AlarmDB(4, 1200)
         
         let removeAlarms (filter: AlarmKVP -> bool) (xs: AlarmDB) =
@@ -112,7 +112,7 @@ module Scheduler =
         let folder (s: AlarmDB * int) (t: Alarm) =
             let key = { domain = t.domain; name = t.name }
             let dict, cnt = s
-            let makeValue _ = new AlarmActor(token)
+            let makeValue _ = new AlarmActor(log, token)
             let actor = dict.GetOrAdd(key, makeValue)
             actor.Schedule(t)
             dict, cnt + 1
@@ -148,15 +148,15 @@ module Scheduler =
                 
             finally
                 if cnt < 1 then
-                    printfn "Completed Agenda agent"
                     xs |> Seq.iter (fun t -> t.Value.Dispose())
+                    sprintf "Completed Agenda agent" |> log.Post
                     cnt <- cnt + 1
                 
         }
         loop alarms
         
-    type internal AgendaActor(token) =
-        inherit AutoCancelActor<AgendaCommand>(alarmAccess token, token)
+    type internal AgendaActor(log, token) =
+        inherit AutoCancelActor<AgendaCommand>(alarmAccess log token, token)
         
         with
             member this.Process(agenda) =

@@ -85,12 +85,22 @@ module Program =
                               |> fun (_, _, z) -> z
 
         use cts = new CancellationTokenSource()
-
+        
         let console (token: CancellationTokenSource) = async {
-            use actor = new AgendaActor(token.Token)
+
+            let logger (inbox: Agent<_>) =
+                async {
+                    while true do
+                        let! msg = inbox.Receive()
+                        msg |> string |> printfn "%s"
+                }
+            
+            use log = Agent<string>.Start(logger, cts.Token)
+
+            use actor = new AgendaActor(log, token.Token)
             
             let cancel _ =
-                printfn "Quitting console... IsCancellationRequested? %b" token.IsCancellationRequested
+                printfn "Quitting console..."
                 actor.Dispose()
                 Async.Sleep(2000) |> Async.RunSynchronously
             do AppDomain.CurrentDomain.ProcessExit.Add cancel
@@ -99,6 +109,13 @@ module Program =
                 match str with
                 | s when s.Length <= len -> s
                 | s -> s.Substring(0, len - 1) |> sprintf "%s…"
+                
+            let list projection (xs: seq<Guid * AlarmKey>) =
+                xs |> Seq.sortBy projection
+                   |> Seq.map (fun (id, ak) -> (id.ToString("N").Substring(19),
+                                                { domain = limit 12 ak.domain; name = limit 30 ak.name }))
+                   |> Seq.iter (fun (id, ak) -> printfn "%-12s | %-12s | %-30s" id ak.domain ak.name)
+                xs |> Seq.length |> printfn "%d items"
 
             while not token.IsCancellationRequested do
                 printf "Command :> "
@@ -115,18 +132,16 @@ module Program =
                         printfn "Processed %i alarms" response
                     with
                     | e -> eprintfn "[ERROR] %A" e; return ()
+
+                | List (ByDomain filter) ->
+                    let domainProjection = snd
+                    let! response = actor.ListDomain(filter)
+                    list domainProjection response
                     
-                | List opt ->
-                    let sortDomain (xs: seq<Guid * AlarmKey>) = xs |> Seq.sortBy (fun (x,y) -> y.domain) 
-                    let sortName (xs: seq<Guid * AlarmKey>) = xs |> Seq.sortBy (fun (x,y) -> y) 
-                    let! response =
-                        match opt with
-                        | ByDomain filter -> actor.ListDomain(filter)
-                        | ByName filter   -> actor.ListName(filter)
-                    response |> Seq.map (fun (id, ak) -> (id.ToString("N").Substring(19),
-                                                          { domain = limit 12 ak.domain; name = limit 30 ak.name }))
-                             |> Seq.iter (fun (id, ak) -> printfn "%-12s | %-12s | %-30s" id ak.domain ak.name)
-                    response |> Seq.length |> printfn "%d items"
+                | List (ByName filter) ->
+                    let nameProjection = fun (_,x) -> x.name
+                    let! response = actor.ListName(filter)
+                    list nameProjection response
                     
                 | Remove opt ->
                     let! response =
