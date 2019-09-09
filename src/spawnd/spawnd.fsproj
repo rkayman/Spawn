@@ -28,16 +28,13 @@
     <Compile Include="Messaging.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="ConsoleHost.fs" />
-    <Compile Include="Configuration.fs" />
     <Compile Include="Scheduler.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FSharp.Core" Version="4.6.2" />
-    <PackageReference Include="Fleece.FSharpData" Version="0.8.0-alpha-3" />
     <PackageReference Include="FSharp.Data" Version="3.1.1" />
-    <PackageReference Include="FSharpPlus" Version="1.1.0-CI00252" />
     <PackageReference Include="Hopac" Version="0.4.1" />
     <PackageReference Include="Logary" Version="5.0.0-rc.10" />
     <PackageReference Include="NodaTime" Version="2.4.6" />
@@ -46,6 +43,10 @@
 
   <ItemGroup>
     <Content Include="app.config" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\spwncomm\spwncomm.fsproj" />
   </ItemGroup>
   
 </Project>
