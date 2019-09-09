@@ -1,4 +1,4 @@
-namespace Spawn
+namespace Spawn.IO
 
 module Configuration =
     open FSharpPlus
@@ -282,8 +282,6 @@ module Configuration =
             fun xs -> { alarms = xs }
             <!> jreq "alarms" (fun x -> Some x.alarms)
 
-    let private lift = function Ok x -> x | Error e -> failwithf "%A" e
-
-    let readAgenda json : Agenda = parseJson json |> lift
+    let readAgenda json : Result<Agenda,_> = parseJson json
 
     let writeAgenda (agenda: Agenda) = toJson agenda |> string
