@@ -3,7 +3,7 @@
     [
         {
             "domain": "pwc-apps.com",
-            "name": "Tiger Atom Feed #1",
+            "name": "PerHour Tiger Atom Feed 1",
             "payload":
             {
                 "source": "https://gate.pform.pwc-apps.com:18151",
@@ -23,7 +23,7 @@
             }
         },
         {
-            "name": "Tiger Atom Feed #2",
+            "name": "Minutes Tiger Atom Feed 2",
             "domain": "pwc-apps.com",
             "payload":
             {
@@ -44,7 +44,7 @@
             }
         },
         {
-            "name": "Tiger Atom Feed #3",
+            "name": "Daily Tiger Atom Feed 3",
             "domain": "pwc-apps.com",
             "payload":
             {
@@ -66,7 +66,7 @@
             }
         },
         {
-            "name": "Tiger Atom Feed #3",
+            "name": "Weekly Tiger Atom Feed 4",
             "domain": "pwc-apps.com",
             "payload":
             {
@@ -88,7 +88,7 @@
             }
         },
         {
-            "name": "Tiger Atom Feed #3",
+            "name": "Fortnightly Tiger Atom Feed 5",
             "domain": "pwc-apps.com",
             "payload":
             {
@@ -110,7 +110,7 @@
             }
         },
         {
-            "name": "Tiger Atom Feed #3",
+            "name": "Semi-monthly Tiger Atom Feed 6",
             "domain": "pwc-apps.com",
             "payload":
             {
@@ -134,7 +134,7 @@
             }
         },
         {
-            "name": "Tiger Atom Feed #3",
+            "name": "Monthly Tiger Atom Feed 7",
             "domain": "pwc-apps.com",
             "payload":
             {
@@ -157,7 +157,7 @@
             }
         },
         {
-            "name": "Tiger Atom Feed #3",
+            "name": "Quarterly Tiger Atom Feed 8",
             "domain": "pwc-apps.com",
             "payload":
             {
@@ -176,12 +176,12 @@
                     "zone": "America/Los_Angeles",
                     "modifier": "Rigid",
                     "date": "Mar-31",
-                    "adjustment": "last"
+                    "adjustment": "Last"
                 }
             }
         },
         {
-            "name": "Tiger Atom Feed #3",
+            "name": "Semi-annual Tiger Atom Feed 9",
             "domain": "pwc-apps.com",
             "payload":
             {
@@ -200,12 +200,12 @@
                     "zone": "America/Los_Angeles",
                     "modifier": "WorkingDayClosest",
                     "date": "Feb-03",
-                    "adjustment": "specific"
+                    "adjustment": "Specific"
                 }
             }
         },
         {
-            "name": "Tiger Atom Feed #3",
+            "name": "Annual Tiger Atom Feed 10",
             "domain": "pwc-apps.com",
             "payload":
             {
@@ -224,7 +224,7 @@
                     "zone": "America/Los_Angeles",
                     "modifier": "WorkingDayBefore",
                     "date": "Apr-05",
-                    "adjustment": "specific"
+                    "adjustment": "Specific"
                 }
             }
         }
