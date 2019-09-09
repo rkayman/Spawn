@@ -2,7 +2,7 @@
     "alarms":
     [
         {
-            "domain": "pwc-apps.com",
+            "domain": "apps.com",
             "name": "PerHour Tiger Atom Feed 1",
             "payload":
             {
@@ -24,7 +24,7 @@
         },
         {
             "name": "Minutes Tiger Atom Feed 2",
-            "domain": "pwc-apps.com",
+            "domain": "apps.com",
             "payload":
             {
                 "source": "https://gate.pform.pwc-apps.com:18152",
