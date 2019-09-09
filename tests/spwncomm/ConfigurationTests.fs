@@ -1,11 +1,11 @@
-module spawnd.tests.ConfigurationTests
+module Tests.Spawn.IO.Configuration
 
 open Xunit
 open Xunit.Abstractions
 open NodaTime
 open FSharpPlus
 open System.Diagnostics
-open Spawn.Configuration
+open Spawn.IO.Configuration
 
 let agenda = {
     alarms =
@@ -86,7 +86,7 @@ type Serialization(output: ITestOutputHelper) =
     [<Fact>]
     member __.``Agenda can be written to json and parsed back to self equality`` () =
         let json = writeAgenda agenda
-        let a' = readAgenda json
+        let a' = readAgenda json |> (function Ok x -> x | Error e -> failwithf "%A" e)
         Assert.Equal(agenda, a')
 
     [<Fact>]
@@ -105,7 +105,7 @@ type Serialization(output: ITestOutputHelper) =
             
             sw.Reset()
             sw.Start()
-            let A' = readAgenda json
+            let A' = readAgenda json |> (function Ok x -> x | Error e -> failwithf "%A" e)
             sw.Stop()
             Assert.Equal(A, A')
             Assert.True(sw.ElapsedMilliseconds < 3000L, sprintf "Deserializing %d items took %d ms." xs.Length sw.ElapsedMilliseconds)

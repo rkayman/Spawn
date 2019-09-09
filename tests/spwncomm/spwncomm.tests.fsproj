@@ -4,17 +4,25 @@
 
     <IsPackable>false</IsPackable>
 
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Tests.fs" />
+    <Compile Include="ConfigurationTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FSharpPlus" Version="1.1.0-CI00271" />
+    <PackageReference Include="FsUnit" Version="3.4.1" />
+    <PackageReference Include="FsUnit.Xunit" Version="3.4.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.2.0" />
+    <PackageReference Include="NodaTime" Version="2.4.6" />
     <PackageReference Include="xunit" Version="2.4.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\spwncomm\spwncomm.fsproj" />
   </ItemGroup>
 
 </Project>
