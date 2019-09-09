@@ -16,6 +16,10 @@ module Configuration =
           name : string
           payload : Payload
           schedule : Schedule }
+        
+    and AlarmKey =
+        { domain : string
+          name : string }
                 
     and Payload =
         { source : string
