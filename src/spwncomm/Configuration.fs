@@ -31,7 +31,7 @@ module Configuration =
           maxRetries : int }
         
     and Schedule =
-        | Rate         of Recurrence
+        | Frequency    of Frequency
         | Daily        of DailyInterval
         | Weekly       of WeeklyInterval
         | Fortnightly  of WeeklyInterval
@@ -41,9 +41,9 @@ module Configuration =
         | SemiAnnually of AnnualInterval
         | Annually     of AnnualInterval
         
-    and Recurrence = { scale: int64; cadence : Cadence }
-        
-    and Cadence =
+    and Frequency = { size: int64; unit : UnitOfTime }
+            
+    and UnitOfTime =
         | Ticks        = 0
         | Milliseconds = 1
         | Seconds      = 2
@@ -95,7 +95,7 @@ module Configuration =
         let encoder (x: 'a) = ofEnum x
         decoder, encoder
         
-    let private cadenceCodec = makeEnumCodec<Cadence,_> ()
+    let private unitOfTimeCodec = makeEnumCodec<UnitOfTime,_> ()
     let private dailyKindCodec = makeEnumCodec<DailyKind,_> ()
     let private dayAdjustmentCodec = makeEnumCodec<DayAdjustmentStrategy,_> ()
     let private dateAdjustmentCodec = makeEnumCodec<DateAdjustmentStrategy,_> ()
@@ -250,15 +250,15 @@ module Configuration =
         <*> jreqWith dateTimeZoneCodec "zone" (function Daily { alarm = { zone = x } } -> Some x | _ -> None)
         <*> jreqWith dailyKindCodec    "kind" (function Daily { kind = x } -> Some x | _ -> None)
 
-    let private rateCodec =
-        fun s c -> Rate { scale = s; cadence = c }
-        <!> jreq                     "scale"   (function Rate { scale = x } -> Some x | _ -> None)
-        <*> jreqWith cadenceCodec    "cadence" (function Rate { cadence = x } -> Some x | _ -> None)
+    let private frequencyCodec =
+        fun s c -> Frequency { size = s; unit = c }
+        <!> jreq                       "size" (function Frequency { size = x } -> Some x | _ -> None)
+        <*> jreqWith unitOfTimeCodec   "unit" (function Frequency { unit = x } -> Some x | _ -> None)
     
     type Schedule with
         static member JsonObjCodec =
             jchoice [
-                tag "rate"          rateCodec
+                tag "frequency"     frequencyCodec
                 tag "daily"         dailyCodec
                 tag "weekly"        weeklyCodec
                 tag "fortnightly"   fortnightlyCodec
