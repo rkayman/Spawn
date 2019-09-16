@@ -55,69 +55,31 @@ module Utilities =
 
 
 module Time =
-    
-    type Rate =
-        | Ticks        of int64
-        | Milliseconds of int64
-        | Seconds      of int64
-        | Minutes      of int64
-        | Hours        of int64
-        | Days         of int64
-        | Weeks        of int64
-        | PerSecond    of int64
-        | PerMinute    of int64
-        | PerHour      of int64
-        | PerDay       of int64
+    open Spawn.IO.Configuration
+            
+    let private scale magnitude period ticks =
+        let m, t = decimal magnitude, decimal ticks
+        Math.Round(period / m, 3) * t |> int64
         
-    let private computeRate rate period ticks =
-        let r, t = decimal rate, decimal ticks
-        Math.Round(period / r, 3) * t |> int64
-        
-    let private frequency = function
-        | Ticks        t  -> t
-        | Milliseconds ms -> ms * NodaConstants.TicksPerMillisecond
-        | Seconds      s  -> s * NodaConstants.TicksPerSecond
-        | Minutes      m  -> m * NodaConstants.TicksPerMinute
-        | Hours        h  -> h * NodaConstants.TicksPerHour
-        | Days         d  -> d * NodaConstants.TicksPerDay
-        | Weeks        w  -> w * NodaConstants.TicksPerWeek
-        | PerSecond    s  -> (s, 1000m, NodaConstants.TicksPerMillisecond) |||> computeRate
-        | PerMinute    m  -> (m, 60m, NodaConstants.TicksPerSecond) |||> computeRate
-        | PerHour      h  -> (h, 60m, NodaConstants.TicksPerMinute) |||> computeRate
-        | PerDay       d  -> (d, 24m, NodaConstants.TicksPerHour) |||> computeRate
+    let rate = function
+        | { size = t; unit = UnitOfTime.Ticks }         -> t
+        | { size = ms; unit = UnitOfTime.Milliseconds } -> ms * NodaConstants.TicksPerMillisecond
+        | { size = s; unit = UnitOfTime.Seconds }       -> s * NodaConstants.TicksPerSecond
+        | { size = m; unit = UnitOfTime.Minutes }       -> m * NodaConstants.TicksPerMinute
+        | { size = h; unit = UnitOfTime.Hours }         -> h * NodaConstants.TicksPerHour
+        | { size = d; unit = UnitOfTime.Days }          -> d * NodaConstants.TicksPerDay
+        | { size = w; unit = UnitOfTime.Weeks }         -> w * NodaConstants.TicksPerWeek
+        | { size = ps; unit = UnitOfTime.PerSecond }    -> (ps, 1000m, NodaConstants.TicksPerMillisecond) |||> scale
+        | { size = pm; unit = UnitOfTime.PerMinute }    -> (pm, 60m, NodaConstants.TicksPerSecond) |||> scale
+        | { size = ph; unit = UnitOfTime.PerHour }      -> (ph, 60m, NodaConstants.TicksPerMinute) |||> scale
+        | { size = pd; unit = UnitOfTime.PerDay }       -> (pd, 24m, NodaConstants.TicksPerHour) |||> scale
+        | { size = _; unit = _ }                        -> invalidArg "unit" "Frequency unit is an unknown value"
     
-    type Rate with
-        member this.Value with get() = frequency this
-        member this.TimeSpan with get() = this |> (frequency >> TimeSpan.FromTicks)
+    let toTimeSpan freq = freq |> rate |> TimeSpan.FromTicks
     
     module Intervals =
         open Utilities
-    
-        type Interval =
-            | Daily        of DailyInterval
-            | Weekly       of WeeklyInterval
-            | Fortnightly  of WeeklyInterval
-            | SemiMonthly  of TwiceMonthlyInterval
-            | Monthly      of MonthlyInterval
-            | Quarterly    of AnnualInterval
-            | SemiAnnually of AnnualInterval
-            | Annually     of AnnualInterval
-        and AlarmTime = { time: LocalTime; zone: DateTimeZone }
-        and DailyInterval = { alarm: AlarmTime; kind: DailyKind }
-        and WeeklyInterval = { alarm: AlarmTime; day: IsoDayOfWeek }
-        and MonthlyInterval = { alarm: AlarmTime; modifier: DayAdjustmentStrategy; day: DayOfMonth }
-        and TwiceMonthlyInterval = { alarm: AlarmTime; modifier: DayAdjustmentStrategy;
-                                     firstDay: DayOfMonth; secondDay: DayOfMonth }
-        and AnnualInterval = { alarm: AlarmTime; modifier: DayAdjustmentStrategy;
-                               date: AnnualDate; adjustment: DateAdjustmentStrategy }
-        and DailyKind = Everyday = 0 | Weekdays = 1 | Weekends = 2
-        and DayAdjustmentStrategy = Rigid = 0 | WorkingDayBefore = 1 | WorkingDayClosest = 2
-        and DateAdjustmentStrategy = Specific = 0 | Last = 1
-        and DayOfMonth =
-            | Day of int
-            | Last
-    
-    
+        
         let inline private validate day msg =
             if day = IsoDayOfWeek.None 
             then invalidArg "day" msg
@@ -151,6 +113,7 @@ module Time =
             | SemiMonthly { alarm = x } -> x
             | Monthly { alarm = x } -> x
             | Quarterly { alarm = x } | SemiAnnually { alarm = x } | Annually { alarm = x } -> x
+            | Frequency _ -> invalidOp "Frequency does not have an AlarmTime component"
     
     
         module Daily =
@@ -326,7 +289,7 @@ module Time =
             let private toAdjusted (adjuster: LocalDateTime -> LocalDate) alarm from =
                 from |> adjuster |> atTime alarm.time |> inZone alarm.zone |> asLocalDateTime
                 
-            let private getAlarmTime = function { alarm = alarm; modifier = _; date = _; adjustment = _ } -> alarm
+            let private getAlarmTime = function { AnnualInterval.alarm = alarm } -> alarm
             
             let inline private mod12 x = (%) x 12
     
@@ -379,19 +342,20 @@ module Time =
     
     
         let private getAdjuster = function
-            | Daily x -> (Daily.next x, Daily.prev x)
-            | Weekly x -> (Weekly.next x, Weekly.prev x)
-            | Fortnightly x -> (Fortnightly.next x, Fortnightly.prev x)
-            | Monthly x -> (Monthly.next x, Monthly.prev x)
-            | SemiMonthly x -> (SemiMonthly.next x, SemiMonthly.prev x)
-            | Quarterly x -> (Quarterly.next x, Quarterly.prev x)
+            | Daily x        -> (Daily.next x, Daily.prev x)
+            | Weekly x       -> (Weekly.next x, Weekly.prev x)
+            | Fortnightly x  -> (Fortnightly.next x, Fortnightly.prev x)
+            | Monthly x      -> (Monthly.next x, Monthly.prev x)
+            | SemiMonthly x  -> (SemiMonthly.next x, SemiMonthly.prev x)
+            | Quarterly x    -> (Quarterly.next x, Quarterly.prev x)
             | SemiAnnually x -> (SemiAnnually.next x, SemiAnnually.prev x)
-            | Annually x -> (Annually.next x, Annually.prev x)
+            | Annually x     -> (Annually.next x, Annually.prev x)
+            | Frequency _    -> invalidOp "Frequency does need an adjuster"
     
-        let private adjust chooser (interval: Interval) (instant: Instant) =
-            let { time = time; zone = zone } = dedup interval
+        let private adjust chooser schedule (instant: Instant) =
+            let { AlarmTime.time = time; zone = zone } = dedup schedule
             let zdt = instant |> toDateTimeOffset |> toZonedDateTime |> withZone (zone)
-            let adjuster = interval |> getAdjuster |> chooser
+            let adjuster = schedule |> getAdjuster |> chooser
     
             zdt |> asLocalDateTime
                 |> adjustWith adjuster

@@ -10,12 +10,12 @@ open Spawn.IO.Configuration
 let agenda = {
     alarms =
       [|{ domain = "pwc-apps.com"; name = "Tiger Atom Feed #1";
-          schedule = Rate { scale = 6L; cadence = Cadence.PerHour };
+          schedule = Frequency { size = 6L; unit = UnitOfTime.PerHour };
           payload = { source = "https://gate.pform.pwc-apps.com:18151"; protocol = "https";
                       format = "xml"; feed = "atom"; recordType = "word-record";
                       batchSize = 100; maxRetries = 3 } };
         { domain = "pwc-apps.com"; name = "Tiger Atom Feed #2";
-          schedule = Rate { scale = 10L; cadence = Cadence.Minutes };
+          schedule = Frequency { size = 10L; unit = UnitOfTime.Minutes };
           payload = { source = "https://gate.pform.pwc-apps.com:18152"; protocol = "https";
                       format = "xml"; feed = "atom"; recordType = "client";
                       batchSize = 100; maxRetries = 1 } };
