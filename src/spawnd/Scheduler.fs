@@ -1,12 +1,16 @@
 namespace Spawn
 
+open Spawn.Clock
+open Spawn.IO.Configuration
+open NodaTime
+open FSharp.Control.Reactive
 open System.Collections.Generic
 open System.Collections.Concurrent
+open System.Reactive.Concurrency
 open System.Threading
 open System
 
 module Scheduler =
-    open Spawn.IO.Configuration
 
     type Agent<'T> = MailboxProcessor<'T>
     
@@ -32,9 +36,38 @@ module Scheduler =
                     (actor :> IDisposable).Dispose()
                     cts.Dispose()
 
-    let private contains (value: string option) (source: string) =
-        value |> Option.map (fun x -> source.Contains(x, StringComparison.OrdinalIgnoreCase))
-              |> Option.defaultValue true
+    let inline private equals (value: string) (source: string) =
+        source.Equals(value, StringComparison.OrdinalIgnoreCase)
+        
+    let inline private contains (value: string) (source: string) =
+        source.Contains(value, StringComparison.OrdinalIgnoreCase)
+              
+    let inline private startsWith (value: string) (source: string) =
+        source.StartsWith(value, StringComparison.OrdinalIgnoreCase)
+              
+    let inline private endsWith (value: string) (source: string) =
+        source.EndsWith(value, StringComparison.OrdinalIgnoreCase)
+
+    let private matches (value: string option) (source: string) =
+        match value with
+        | None -> true
+        | Some x when x.Equals("*") -> true
+        | Some x ->
+            let arr = x.Split('*', StringSplitOptions.None) |> Array.toList
+            match arr with
+            | x :: y :: [] when x.Length > 0 && y.Length > 0 ->
+                source |> startsWith x && source |> endsWith y
+            | x :: y :: [] when String.IsNullOrWhiteSpace(x) && y.Length > 0 ->
+                source |> endsWith y
+            | x :: y :: [] when String.IsNullOrWhiteSpace(y) && x.Length > 0 ->
+                source |> startsWith x
+            | x :: y :: [] when String.IsNullOrWhiteSpace(x) && String.IsNullOrWhiteSpace(y) ->
+                true
+            | x :: y :: z :: [] when String.IsNullOrWhiteSpace(x) && String.IsNullOrWhiteSpace(z) ->
+                source |> contains y
+            | x :: [] when x.Length > 0 ->
+                source |> equals x
+            | _ -> invalidArg "value" "Filter is missing or illegal"
     
     type internal CommandOption = Domain of string option | Name of string option
     
@@ -46,40 +79,70 @@ module Scheduler =
     type private AlarmCommand =
         | Schedule of Alarm
         | Info of CommandOption * AsyncReplyChannel<(Guid * AlarmKey) option>
-            
-    let private alarmStorage (log: Agent<_>) (inbox: Agent<_>) =
+        | Trigger of Instant 
+    
+    type private AlarmConfig =
+        { id: Guid
+          alarm: Alarm option
+          timer: IDisposable option }
+        
+    type System.Guid with
+        member x.ToShortString() = x.ToString("N").Substring(19)
+    
+    let private alarmAccess (timerThread: IScheduler) (log: Agent<_>) (inbox: Agent<_>) =
         let alarmId = Guid.NewGuid()
+        let defaultConfig = { id = alarmId; alarm = None; timer = None }
+        
+        let onNext (x: Repeater.PetitSonnerie) = Trigger x.Time |> inbox.Post
+        let onError e = (alarmId.ToShortString(), e.ToString()) ||> sprintf "ERROR [Alarm %s] %A" |> log.Post
+        let onCompleted _ = alarmId.ToShortString() |> sprintf "COMPLETED [Alarm %s]" |> log.Post
+        
+        let startTimer alarm = async {
+            let result = (alarm.schedule, Alarm.Starting None)
+                         |> Alarm.Repeat
+                         |> Alarm.scheduleOn timerThread None
+                         |> Observable.subscribeWithCallbacks onNext onError onCompleted
+            return result
+        }
         
         let mutable cnt = 0
-        let rec loop id alarm = async {
+        let rec loop config = async {
             
             try
                 let! msg = inbox.Receive()
                 match msg with
                 | Schedule ax ->
-                    return! loop id (Some ax)
+                    let! result = startTimer ax
+                    let config' = { config with alarm = Some ax; timer = Some result }
+                    //let config' = { config with alarm = Some ax; timer = None }
+                    return! loop config'
                 
                 | Info (option, channel) ->
-                    match alarm with
+                    match config.alarm with
                     | None -> channel.Reply(None)
                     | Some ax ->
                         match option with
-                        | ByDomain value -> ax.domain |> contains value
-                        | ByName value -> ax.name |> contains value
+                        | ByDomain value -> ax.domain |> matches value
+                        | ByName value -> ax.name |> matches value
                         |> function
                             | true -> channel.Reply(Some (alarmId, { domain = ax.domain; name = ax.name }))
                             | false -> channel.Reply(None)
-                    return! loop id alarm
+                    return! loop config
+                    
+                | Trigger instant ->
+                    (alarmId.ToShortString(), instant) ||> sprintf "INFO [Alarm %s] triggered at %A" |> log.Post
+                    return! loop config
                     
             finally
                 if cnt < 1 then
-                    alarmId.ToString("N").Substring(19) |> sprintf "Completed Alarm agent: %s" |> log.Post
+                    config.timer |> Option.iter (fun t -> t.Dispose())
+                    alarmId.ToShortString() |> sprintf "Completed Alarm agent: %s" |> log.Post
                     cnt <- cnt + 1
         }
-        loop alarmId None
+        loop defaultConfig
             
-    type private AlarmActor(log, ?token: CancellationToken) =
-        inherit AutoCancelActor<AlarmCommand>(alarmStorage log, ?token = token)
+    type private AlarmActor(timerThread, log, ?token: CancellationToken) =
+        inherit AutoCancelActor<AlarmCommand>(alarmAccess timerThread log, ?token = token)
         
         with
             member this.Schedule(alarm) = this.Agent.Post(Schedule alarm)
@@ -97,8 +160,9 @@ module Scheduler =
     type private AlarmDB = ConcurrentDictionary<AlarmKey, AlarmValue>
     type private AlarmKVP = KeyValuePair<AlarmKey, AlarmValue>
     
-    let private alarmAccess log token (inbox: Agent<_>) =
+    let private agendaAccess log token (inbox: Agent<_>) =
         let alarms = AlarmDB(4, 1200)
+        let timerThread = new EventLoopScheduler()
         
         let removeAlarms (filter: AlarmKVP -> bool) (xs: AlarmDB) =
             let remove cnt (value: IDisposable) = value.Dispose(); cnt + 1
@@ -112,7 +176,7 @@ module Scheduler =
         let folder (s: AlarmDB * int) (t: Alarm) =
             let key = { domain = t.domain; name = t.name }
             let dict, cnt = s
-            let makeValue _ = new AlarmActor(log, token)
+            let makeValue _ = new AlarmActor(timerThread, log, token)
             let actor = dict.GetOrAdd(key, makeValue)
             actor.Schedule(t)
             dict, cnt + 1
@@ -130,13 +194,13 @@ module Scheduler =
                 
                 | Remove (ByDomain value, channel) ->
                     let numRemoved, xs' =
-                        xs |> removeAlarms (fun x -> x.Key.domain |> contains value)
+                        xs |> removeAlarms (fun x -> x.Key.domain |> matches value)
                     channel.Reply(numRemoved)
                     return! loop xs'
                 
                 | Remove (ByName value, channel) ->
                     let numRemoved, xs' =
-                        xs |> removeAlarms (fun x -> x.Key.name |> contains value)
+                        xs |> removeAlarms (fun x -> x.Key.name |> matches value)
                     channel.Reply(numRemoved)
                     return! loop xs'
 
@@ -148,15 +212,16 @@ module Scheduler =
                 
             finally
                 if cnt < 1 then
-                    xs |> Seq.iter (fun t -> t.Value.Dispose())
+                    timerThread.Dispose()
                     sprintf "Completed Agenda agent" |> log.Post
+                    xs |> Seq.iter (fun t -> t.Value.Dispose())
                     cnt <- cnt + 1
                 
         }
         loop alarms
         
     type internal AgendaActor(log, token) =
-        inherit AutoCancelActor<AgendaCommand>(alarmAccess log token, token)
+        inherit AutoCancelActor<AgendaCommand>(agendaAccess log token, token)
         
         with
             member this.Process(agenda) =
