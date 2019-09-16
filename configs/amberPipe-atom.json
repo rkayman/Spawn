@@ -16,9 +16,9 @@
             },
             "schedule":
             {
-                "rate": {
-                    "scale": 4,
-                    "cadence": "PerHour"
+                "frequency": {
+                    "size": 4,
+                    "unit": "PerMinute"
                 }
             }
         },
@@ -37,9 +37,9 @@
             },
             "schedule":
             {
-                "rate": {
-                    "scale": 15,
-                    "cadence": "Minutes"
+                "frequency": {
+                    "size": 10,
+                    "unit": "Seconds"
                 }
             }
         },
