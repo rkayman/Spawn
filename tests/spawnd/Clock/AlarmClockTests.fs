@@ -1,4 +1,4 @@
-module spawnd.tests.Clock.ClockTests
+module Tests.Spawn.Clock.ClockTests
 
 open NodaTime
 open Xunit
@@ -11,9 +11,41 @@ open System
 open Spawn.Clock
 open Spawn.Clock.Alarm
 open Spawn.Clock.Repeater
+open Spawn.IO.Configuration
 open Spawn.Clock.Time
-open Spawn.Clock.Time.Intervals
 
+
+type Rate =
+    | Ticks        of int64
+    | Milliseconds of int64
+    | Seconds      of int64
+    | Minutes      of int64
+    | Hours        of int64
+    | Days         of int64
+    | Weeks        of int64
+    | PerSecond    of int64
+    | PerMinute    of int64
+    | PerHour      of int64
+    | PerDay       of int64
+
+let private makeFrequency size unit = { size = size; unit = unit }
+
+let private toFrequency = function
+    | Ticks x        -> makeFrequency x UnitOfTime.Ticks
+    | Milliseconds x -> makeFrequency x UnitOfTime.Milliseconds
+    | Seconds x      -> makeFrequency x UnitOfTime.Seconds
+    | Minutes x      -> makeFrequency x UnitOfTime.Minutes
+    | Hours x        -> makeFrequency x UnitOfTime.Hours
+    | Days x         -> makeFrequency x UnitOfTime.Days
+    | Weeks x        -> makeFrequency x UnitOfTime.Weeks
+    | PerSecond x    -> makeFrequency x UnitOfTime.PerSecond
+    | PerMinute x    -> makeFrequency x UnitOfTime.PerMinute
+    | PerHour x      -> makeFrequency x UnitOfTime.PerHour
+    | PerDay x       -> makeFrequency x UnitOfTime.PerDay
+    
+type Rate with
+    member x.Value with get() = toFrequency x |> rate
+    member x.TimeSpan with get() = x |> toFrequency |> toTimeSpan
 
 let private oneSec = Seconds 1L
 let private oneMin = Minutes 1L
@@ -32,7 +64,7 @@ module BalanceWheelTests =
         let expected = [0L..6L] |> List.map makeNotification
 
         let sched = TestScheduler()
-        let hb = BalanceWheel.startOn freq.TimeSpan sched
+        let hb = BalanceWheel.startOn sched freq.TimeSpan
                  |> Observable.map (fun x -> x.Count)
 
         let actual = TestSchedule.startObservable sched hb 
@@ -51,7 +83,7 @@ module BalanceWheelTests =
         let sched = HistoricalScheduler(DateTimeOffset.Now)
         let rate = PerSecond (int64 num)
 
-        BalanceWheel.startOn rate.TimeSpan sched
+        BalanceWheel.startOn sched rate.TimeSpan
         |> Observable.toList
         |> Observable.subscribe (fun lst -> lst |> should haveCount num)
         |> ignore
@@ -68,9 +100,9 @@ module AlarmTests =
     [<InlineData(5)>]
     let ``Alarm notifies at given rate per minute`` num =
         let sched = HistoricalScheduler(DateTimeOffset.Now)
-        let rate = PerMinute (int64 num)
+        let freq = PerMinute (int64 num) |> toFrequency
 
-        Alarm.scheduleOn (Every (rate, After None)) sched None
+        Alarm.scheduleOn sched None (Every (freq, After None))
         |> Observable.toList
         |> Observable.subscribe (fun lst -> lst |> should haveCount num)
         |> ignore
@@ -85,11 +117,11 @@ module AlarmTests =
     [<InlineData(7)>]
     let ``Alarm notifies after delay at given rate per minute`` num =
         let sched = TestScheduler()
-        let rate = PerMinute (int64 num)
+        let freq = PerMinute (int64 num) |> toFrequency
         let startAt = sched.Now + oneMin.TimeSpan - oneSec.TimeSpan |> Some
 
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Every (rate, After startAt)) sched None
+        Alarm.scheduleOn sched None (Every (freq, After startAt))
         |> Observable.subscribe (actual.Add)
         |> ignore
 
@@ -103,10 +135,10 @@ module AlarmTests =
     let ``Alarm is cancelled before notifying`` () =
         let sched = HistoricalScheduler(DateTimeOffset.Now)
         let actual = ResizeArray<PetitSonnerie>()
-        let rate = PerMinute 5L
+        let freq = PerMinute 5L |> toFrequency
         let startAt = sched.Now + oneMin.TimeSpan |> Some
 
-        let alarm = Alarm.scheduleOn (Every (rate, After startAt)) sched None
+        let alarm = Alarm.scheduleOn sched None (Every (freq, After startAt))
                     |> Observable.toList
                     |> Observable.subscribe actual.AddRange
 
@@ -123,9 +155,9 @@ module AlarmTests =
     [<InlineData(5)>]
     let ``Alarm notifies at given rate per hour`` num =
         let sched = HistoricalScheduler(DateTimeOffset.Now)
-        let rate = PerHour (int64 num)
+        let freq = PerHour (int64 num) |> toFrequency
 
-        Alarm.scheduleOn (Every (rate, After None)) sched None
+        Alarm.scheduleOn sched None (Every (freq, After None))
         |> Observable.toList
         |> Observable.subscribe (fun lst -> lst |> should haveCount num)
         |> ignore
@@ -141,9 +173,9 @@ module AlarmTests =
     [<InlineData(3)>]
     let ``Alarm notifies at given rate per day`` num =
         let sched = HistoricalScheduler(DateTimeOffset.Now)
-        let rate = PerDay (int64 num)
+        let freq = PerDay (int64 num) |> toFrequency
 
-        Alarm.scheduleOn (Every (rate, After None)) sched None
+        Alarm.scheduleOn sched None (Every (freq, After None))
         |> Observable.toList
         |> Observable.subscribe (fun lst -> lst |> should haveCount num)
         |> ignore
@@ -155,25 +187,25 @@ module AlarmTests =
     let ``Alarm notifies every other week`` () =
         let sched = TestScheduler()
         let actual = ResizeArray<PetitSonnerie>()
-        let rate = Weeks 2L
+        let freq = Weeks 2L |> toFrequency
         let recoilRate = (Days 1L).TimeSpan
-        let week = (Weeks 1L).Value
+        let oneWeek = Weeks 1L
 
-        Alarm.scheduleOn (Every (rate, After None)) sched (Some recoilRate)
+        Alarm.scheduleOn sched (Some recoilRate) (Every (freq, After (Some sched.Now)))
         |> Observable.subscribe actual.Add
         |> ignore
 
         actual |> should be Empty
         sched.AdvanceBy(oneSec.Value)
         for i in [1..6] do
-            sched.AdvanceBy(week)
+            sched.AdvanceBy(oneWeek.Value)
             actual |> should haveCount (i / 2)
 
     [<Fact>]
     let ``Alarm notifies every Friday at 0200 eastern`` () =
         let now = DateTimeOffset(2019, 1, 1, 3, 0, 0, 0, TimeSpan.Zero)
         let sched = HistoricalScheduler(now)
-        let rate = Weeks 1L
+        let freq = Weeks 1L |> toFrequency
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
 
@@ -186,12 +218,12 @@ module AlarmTests =
                          .ToDateTimeOffset()
         let nextRun = OffsetDateTime.FromDateTimeOffset(lastRun).With(next).ToDateTimeOffset()
 
-        Alarm.scheduleOn (Every (rate, After (Some lastRun))) sched (Some recoilRate)
+        Alarm.scheduleOn sched (Some recoilRate) (Every (freq, After (Some lastRun)))
         |> Observable.subscribe actual.Add
         |> ignore
 
         actual |> should be Empty
-        sched.AdvanceBy(rate.TimeSpan)
+        sched.AdvanceBy(toTimeSpan freq)
         actual |> should not' (be Empty)
         actual |> should haveCount 1
         actual.[0].Time.ToDateTimeOffset() |> Alarm.normalize recoilRate
@@ -211,7 +243,7 @@ module AlarmTests =
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
+        Alarm.scheduleOn sched (Some recoilRate) (Repeat (interval, Starting None))
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -235,7 +267,7 @@ module AlarmTests =
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
+        Alarm.scheduleOn sched (Some recoilRate) (Repeat (interval, Starting None))
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -259,7 +291,7 @@ module AlarmTests =
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
+        Alarm.scheduleOn sched (Some recoilRate) (Repeat (interval, Starting None))
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -283,7 +315,7 @@ module AlarmTests =
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
+        Alarm.scheduleOn sched (Some recoilRate) (Repeat (interval, Starting None))
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -307,7 +339,7 @@ module AlarmTests =
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
+        Alarm.scheduleOn sched (Some recoilRate) (Repeat (interval, Starting None))
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -331,7 +363,7 @@ module AlarmTests =
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
+        Alarm.scheduleOn sched (Some recoilRate) (Repeat (interval, Starting None))
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -357,7 +389,7 @@ module AlarmTests =
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
+        Alarm.scheduleOn sched (Some recoilRate) (Repeat (interval, Starting None))
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -383,7 +415,7 @@ module AlarmTests =
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
+        Alarm.scheduleOn sched (Some recoilRate) (Repeat (interval, Starting None))
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -409,7 +441,7 @@ module AlarmTests =
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
+        Alarm.scheduleOn sched (Some recoilRate) (Repeat (interval, Starting None))
         |> Observable.subscribe actual.Add
         |> ignore
         
@@ -438,7 +470,7 @@ module AlarmTests =
         
         let recoilRate = (Hours 1L).TimeSpan
         let actual = ResizeArray<PetitSonnerie>()
-        Alarm.scheduleOn (Repeat (interval, Starting None)) sched (Some recoilRate)
+        Alarm.scheduleOn sched (Some recoilRate) (Repeat (interval, Starting None))
         |> Observable.subscribe actual.Add
         |> ignore
         
