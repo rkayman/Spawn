@@ -5,6 +5,7 @@ open Spawn.IO.Messages
 open Spawn.IO.Configuration
 open System
 open System.IO
+open System.Reflection
 open System.Threading
 
 module Program =
@@ -97,13 +98,13 @@ module Program =
             
             use log = Agent<string>.Start(logger, cts.Token)
 
-            use actor = new AgendaActor(log, token.Token)
+            use agendaActor = new AgendaActor(log, token.Token)
             
-            let cancel _ =
+            let cancel (actor: IDisposable) _ =
                 printfn "Quitting console..."
                 actor.Dispose()
                 Async.Sleep(2000) |> Async.RunSynchronously
-            do AppDomain.CurrentDomain.ProcessExit.Add cancel
+            do AppDomain.CurrentDomain.ProcessExit.Add (cancel agendaActor)
             
             let limit len (str: string) =
                 match str with
@@ -116,6 +117,11 @@ module Program =
                                                 { domain = limit 12 ak.domain; name = limit 30 ak.name }))
                    |> Seq.iter (fun (id, ak) -> printfn "%-12s | %-12s | %-30s" id ak.domain ak.name)
                 xs |> Seq.length |> printfn "%d items"
+                
+            let appVersion = Assembly.GetEntryAssembly().GetName().Version
+            let appTitle = Assembly.GetEntryAssembly().GetCustomAttributes<AssemblyTitleAttribute>()
+                           |> Seq.map (fun x -> x.Title)
+                           |> String.concat ", "
 
             while not token.IsCancellationRequested do
                 printf "Command :> "
@@ -128,30 +134,50 @@ module Program =
                     try
                         let! json = File.ReadAllTextAsync(fi.FullName, Text.Encoding.UTF8) |> Async.AwaitTask
                         let agenda = readAgenda json |> function Ok x -> x | Error e -> raise (new FormatException(e.ToString()))
-                        let! response = actor.Process(agenda)
+                        let! response = agendaActor.Process(agenda)
                         printfn "Processed %i alarms" response
                     with
                     | e -> eprintfn "[ERROR] %A" e; return ()
 
                 | List (ByDomain filter) ->
                     let domainProjection = snd
-                    let! response = actor.ListDomain(filter)
+                    let! response = agendaActor.ListDomain(filter)
                     list domainProjection response
                     
                 | List (ByName filter) ->
                     let nameProjection = fun (_,x) -> x.name
-                    let! response = actor.ListName(filter)
+                    let! response = agendaActor.ListName(filter)
                     list nameProjection response
                     
                 | Remove opt ->
                     let! response =
                         match opt with
-                        | ByDomain filter -> actor.RemoveDomain(filter)
-                        | ByName filter   -> actor.RemoveName(filter)
+                        | ByDomain filter -> agendaActor.RemoveDomain(filter)
+                        | ByName filter   -> agendaActor.RemoveName(filter)
                     printfn "Removed %i alarms" response
                     do! Async.Sleep(300)
                     
-                | Help -> ()
+                | Help ->
+                    [ appTitle.ToString()
+                      appVersion.ToString() |> sprintf "Version: %s"
+                      ""
+                      "spawnctl <command> <options>"
+                      "See latest documentation at https://spawnctl.github.io"
+                      ""
+                      "Commands:"
+                      "\tIMPORT <path>"
+                      "\tImport the file located at <path>. Format defined at https://spawnctl.github.io"
+                      ""
+                      "\tLIST [ByDomain|ByName] [<filter>]"
+                      "\tList the known alarms sorted by domain or by name and, optionally, matching <filter>"
+                      ""
+                      "\tREMOVE [ByDomain|ByName] <filter>"
+                      "\tRemove an alarm that matches the filter for either the Domain or Name"
+                      ""
+                      "\tHELP"
+                      "\tPrints this text"
+                      "" ]
+                    |> Seq.iter (printfn "    %s")
         }
 
         console cts |> Async.Start
