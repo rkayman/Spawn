@@ -1,0 +1,336 @@
+{
+    "$comment": "Validated against https://www.jsonschemavalidator.net on 9 July 2019",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://schemas.pwc-gms.com/spawn-agenda-v1.json",
+    "$ref": "#/definitions/Agenda",
+    "definitions": {
+        "Agenda": {
+            "title": "Agenda",
+            "description": "Array of alarms representing the full scope of the scheduling needed for spawnd",
+            "type": "object",
+            "properties": {
+                "alarms": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Alarm"
+                    }
+                }
+            },
+            "required": [ "alarms" ]
+        },
+        "Alarm": {
+            "title": "Alarm",
+            "description": "Describes an alarm used by spawnd.",
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "title": "Domain",
+                    "description": "Name of the [sub-]domain this alarm applies to. Useful for grouping all alarms relating to a domain",
+                    "type": "string",
+                    "format": "hostname",
+                    "examples": [ "example.com", "your_company.com", "pwc-apps.com" ]
+                },
+                "name": {
+                    "title": "Name",
+                    "description": "Name of this alarm. Uniquely identifies this alarm in the domain",
+                    "type": "string",
+                    "examples": [ "Tiger Assignee Feed", "Tiger Client Feed", "Tiger Work Record Feed" ]
+                },
+                "payload": {
+                    "$ref": "#/definitions/Payload"
+                },
+                "schedule": {
+                    "$ref": "#/definitions/Schedule"
+                }
+            },
+            "required": [ "domain", "name", "payload", "schedule" ]
+        },
+        "Payload": {
+            "title": "Payload",
+            "description": "Payload spawnd will send to target/destination",
+            "type": "object",
+            "properties": {
+                "source": {
+                    "title": "Source",
+                    "description": "URI of endpoint for source data",
+                    "type": "string",
+                    "format": "uri"
+                },
+                "protocol": {
+                    "title": "Protocol",
+                    "description": "Protocol used for connecting to source endpoint",
+                    "type": "string",
+                    "enum": [ "https", "http", "ftp", "sftp" ]
+                },
+                "format": {
+                    "title": "Format",
+                    "description": "Format of data located at source endpoint",
+                    "type": "string",
+                    "enum": [ "xml", "json", "csv", "xls", "xlsx" ]
+                },
+                "feed": {
+                    "title": "Feed",
+                    "description": "Type of feed - though not sure why this is needed (should be boolean with feedType to indicate how to process feed",
+                    "type": "string",
+                    "enum": [ "atom", "rss" ]
+                },
+                "recordType": {
+                    "title": "RecordType",
+                    "description": "Type of record to process",
+                    "type": "string"
+                },
+                "batchSize": {
+                    "title": "BatchSize",
+                    "description": "Defines number of items to retrieve from source at one time",
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "default": 100
+                },
+                "maxRetries": {
+                    "title": "MaxRetries",
+                    "description": "Number of time to retry source endpoint before raising an error",
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 3
+                }
+            },
+            "required": [ "batchSize", "feed", "format", "maxRetries", "protocol", "recordType", "source" ]
+        },
+        "Schedule": {
+            "title": "Schedule",
+            "description": "Rate at which to send a payload request to crawler",
+            "type": "object",
+            "oneOf": [
+                { "$ref": "#/definitions/Schedule/definitions/FrequencySchedule" },
+                { "$ref": "#/definitions/Schedule/definitions/DailySchedule" },
+                { "$ref": "#/definitions/Schedule/definitions/WeeklySchedule" },
+                { "$ref": "#/definitions/Schedule/definitions/FortnightlySchedule" },
+                { "$ref": "#/definitions/Schedule/definitions/SemiMonthlySchedule" },
+                { "$ref": "#/definitions/Schedule/definitions/MonthlySchedule" },
+                { "$ref": "#/definitions/Schedule/definitions/QuarterlySchedule" },
+                { "$ref": "#/definitions/Schedule/definitions/SemiAnnuallySchedule" },
+                { "$ref": "#/definitions/Schedule/definitions/AnnuallySchedule" }
+            ],
+            "definitions": {
+                "FrequencySchedule": {
+                    "type": "object",
+                    "properties": { 
+                        "rate": { "$ref": "#/definitions/Frequency" }
+                    },
+                    "required": [ "frequency" ]
+                },
+                "DailySchedule": {
+                    "properties": {
+                        "daily": { "$ref": "#/definitions/Daily" }
+                    },
+                    "required": [ "daily" ]
+                },
+                "WeeklySchedule": {
+                    "properties": {
+                        "weekly": { "$ref": "#/definitions/Weekly" }
+                    },
+                    "required": [ "weekly" ]
+                },
+                "FortnightlySchedule": {
+                    "properties": {
+                        "fortnightly": { "$ref": "#/definitions/Fortnightly" }
+                    },
+                    "required": [ "fortnightly" ]
+                },
+                "SemiMonthlySchedule": {
+                    "properties": {
+                        "semi-monthly": { "$ref": "#/definitions/SemiMonthly" }
+                    },
+                    "required": [ "semi-monthly" ]
+                },
+                "MonthlySchedule": {
+                    "properties": {
+                        "monthly": { "$ref": "#/definitions/Monthly" }
+                    },
+                    "required": [ "monthly" ]
+                },
+                "QuarterlySchedule": {
+                    "properties": {
+                        "quarterly": { "$ref": "#/definitions/Quarterly" }
+                    },
+                    "required": [ "quarterly" ]
+                },
+                "SemiAnnuallySchedule": {
+                    "properties": {
+                        "semi-annually": { "$ref": "#/definitions/SemiAnnually" }
+                    },
+                    "required": [ "semi-annually" ]
+                },
+                "AnnuallySchedule": {
+                    "properties": {
+                        "annually": { "$ref": "#/definitions/Annually" }
+                    },
+                    "required": [ "annually" ]
+                }
+            }
+        },
+        "Frequency": {
+            "title": "Frequency",
+            "description": "Alarm occurs at simple scalar rates",
+            "type": "object",
+            "properties": {
+                "scalar": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                },
+                "unit": {
+                    "type": "string",
+                    "enum": [ "Ticks", "Nanoseconds", "Milliseconds", "Seconds", "Minutes", "Hours", "Days", "Weeks", "PerSecond", "PerMinute", "PerHour", "PerDay" ]
+                }
+            },
+            "required": [ "scale", "cadence" ]
+        },
+        "Daily": {
+            "title": "Daily",
+            "description": "Alarm occurs every day at prescribed time",
+            "type": "object",
+            "$ref": "#/definitions/AlarmTime",
+            "additionalProperties": true,
+            "properties": {
+                "kind": {
+                    "title": "DailyKind",
+                    "description": "Identifies strategy for repeating the daily alarm",
+                    "type": "string",
+                    "enum": [ "Everyday", "Weekday", "Weekend" ]
+                }
+            },
+            "required": [ "time", "zone", "kind" ]
+        },
+        "Weekly": {
+            "title": "Weekly",
+            "description": "Alarm occurs weekly on specified day and prescribed time",
+            "$ref": "#/definitions/AlarmTime",
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+                "day": { "$ref": "#/definitions/IsoDayOfWeek" }
+            },
+            "required": [ "time", "zone", "day" ]
+        },
+        "Fortnightly": {
+            "title": "Fortnightly",
+            "description": "Alarm occurs every other week, or every 2 weeks, on ",
+            "type": "object",
+            "$ref": "#/definitions/Weekly"
+        },
+        "SemiMonthly": {
+            "title": "SemiMonthly",
+            "description": "Alarm occurs twice per month on first day and second day at prescribed time",
+            "$ref": "#/definitions/AlarmTime",
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+                "modifier": { "$ref": "#/definitions/DayAdjustmentStrategy" },
+                "firstDay": { "$ref": "#/definitions/DayOfMonth" },
+                "secondDay": { "$ref": "#/definitions/DayOfMonth" }
+            },
+            "required": [ "time", "zone", "modifier", "firstDay", "secondDay" ]
+        },
+        "Monthly": {
+            "title": "Monthly",
+            "description": "Alarm occurs once per month at prescribed time",
+            "$ref": "#/definitions/AlarmTime",
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+                "modifier": { "$ref": "#/definitions/DayAdjustmentStrategy" },
+                "day": { "$ref": "#/definitions/DayOfMonth" }
+            },
+            "required": [ "time", "zone", "modifier", "day" ]
+        },
+        "Quarterly": {
+            "title": "Quarterly",
+            "description": "Alarm occurs four times per year at prescribed time",
+            "$ref": "#/definitions/Annually"
+        },
+        "SemiAnnually": {
+            "title": "SemiAnnually",
+            "description": "Alarm occurs twice per year at prescribed time",
+            "$ref": "#/definitions/Annually"
+        },
+        "Annually": {
+            "title": "Annually",
+            "description": "Alarm occurs once per year at prescribed time",
+            "$ref": "#/definitions/AlarmTime",
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+                "modifier": { "$ref": "#/definitions/DayAdjustmentStrategy" },
+                "date": { "$ref": "#/definitions/AnnualDate" },
+                "adjustment": { "$ref": "#/definitions/DateAdjustmentStrategy" }
+            },
+            "required": [ "time", "zone", "modifier", "date", "adjustment" ]
+        },
+        "AlarmTime": {
+            "title": "AlarmTime",
+            "description": "The prescribed time and zone of the alarm",
+            "type": "object",
+            "properties": {
+                "time": {
+                    "title": "Time",
+                    "description": "Prescribed time in full-time ISO8601 format alarm should occur",
+                    "type": "string",
+                    "format": "time"
+                },
+                "zone": {
+                    "title": "Zone",
+                    "description": "Prescribed Tzdb time zone name",
+                    "type": "string"
+                }
+            },
+            "required": [ "time", "zone" ]
+        },
+        "IsoDayOfWeek": {
+            "title": "Day of Week",
+            "description": "ISO Day of the Week",
+            "type": "string",
+            "enum": [ "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" ]
+        },
+        "DayAdjustmentStrategy": {
+            "title": "Day Adjustment Strategy",
+            "description": "Indicates strategy used to adjust the day if the alarm falls on a weekend",
+            "type": "string",
+            "enum": [ "Rigid", "WorkingDayBefore", "WorkingDayClosest" ]
+        },
+        "DayOfMonth": {
+            "title": "Day of the Month",
+            "description": "Indicates the specific day of the month for the alarm",
+            "oneOf": [ 
+                { "$ref": "#/definitions/DayInteger" },
+                { "$ref": "#/definitions/DayString" }
+            ]
+        },
+        "DayInteger": {
+            "title": "DayInteger",
+            "description": "Day of the month expressed as integer (1 - 31)",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 31
+        },
+        "DayString": {
+            "title": "DayString",
+            "description": "Day of the month expressed as a string (Last)",
+            "type": "string",
+            "enum": [ "Last" ]
+        },
+        "AnnualDate": {
+            "title": "AnnualDate",
+            "description": "Identifies the month and day of an annual alarm",
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 6,
+            "pattern": "(JjAaNn)|(FfEeBb)|(MmAaRr)|(AaPpRr)|(MmAaYy)|(JjUuNn)|(JjUuLl)|(AaUuGg)|(SsEePp)|(OoCcTt)|(NnOoVv)|(DdEeCc)-[0[1-9]|[1,2][0-9]|[3][0,1]"
+        },
+        "DateAdjustmentStrategy": {
+            "title": "DateAdjustmentStrategy",
+            "description": "Adjust the date based on when date occurs",
+            "type": "string",
+            "enum": [ "Specific", "Last" ]
+        }
+    }
+}

@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <RootNamespace>Spawn</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Common.fs" />
+    <Compile Include="Pipes.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Fleece.FSharpData" Version="0.8.0-alpha-3" />
+    <PackageReference Include="FSharpPlus" Version="1.1.0-CI00271" />
+    <PackageReference Include="NodaTime" Version="2.4.6" />
+  </ItemGroup>
+
+</Project>

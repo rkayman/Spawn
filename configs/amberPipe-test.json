@@ -1,0 +1,2107 @@
+{
+    "alarms":
+    [
+        {
+            "domain": "apps.com",
+            "name": "PerHour Tiger Atom Feed 1",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18151",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "work-record",
+                "batchSize": 100,
+                "maxRetries": 0
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Minutes Tiger Atom Feed 2",
+            "domain": "apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18152",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "client",
+                "batchSize": 100,
+                "maxRetries": 1
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "Seconds"
+                }
+            }
+        },
+        {
+            "name": "Daily Tiger Atom Feed 3",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Weekly Tiger Atom Feed 4",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Fortnightly Tiger Atom Feed 5",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-monthly Tiger Atom Feed 6",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Monthly Tiger Atom Feed 7",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Quarterly Tiger Atom Feed 8",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-annual Tiger Atom Feed 9",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Annual Tiger Atom Feed 10",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+
+        {
+            "domain": "apps.com",
+            "name": "PerHour Tiger Atom Feed 11",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18151",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "work-record",
+                "batchSize": 100,
+                "maxRetries": 0
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Minutes Tiger Atom Feed 12",
+            "domain": "apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18152",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "client",
+                "batchSize": 100,
+                "maxRetries": 1
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "Seconds"
+                }
+            }
+        },
+        {
+            "name": "Daily Tiger Atom Feed 13",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Weekly Tiger Atom Feed 14",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Fortnightly Tiger Atom Feed 15",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-monthly Tiger Atom Feed 16",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Monthly Tiger Atom Feed 17",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Quarterly Tiger Atom Feed 18",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-annual Tiger Atom Feed 19",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Annual Tiger Atom Feed 20",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "domain": "apps.com",
+            "name": "PerHour Tiger Atom Feed 21",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18151",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "work-record",
+                "batchSize": 100,
+                "maxRetries": 0
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Minutes Tiger Atom Feed 22",
+            "domain": "apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18152",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "client",
+                "batchSize": 100,
+                "maxRetries": 1
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "Seconds"
+                }
+            }
+        },
+        {
+            "name": "Daily Tiger Atom Feed 23",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Weekly Tiger Atom Feed 24",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Fortnightly Tiger Atom Feed 25",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-monthly Tiger Atom Feed 26",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Monthly Tiger Atom Feed 27",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Quarterly Tiger Atom Feed 28",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-annual Tiger Atom Feed 29",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Annual Tiger Atom Feed 30",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "domain": "apps.com",
+            "name": "PerHour Tiger Atom Feed 31",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18151",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "work-record",
+                "batchSize": 100,
+                "maxRetries": 0
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Minutes Tiger Atom Feed 32",
+            "domain": "apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18152",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "client",
+                "batchSize": 100,
+                "maxRetries": 1
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "Seconds"
+                }
+            }
+        },
+        {
+            "name": "Daily Tiger Atom Feed 33",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Weekly Tiger Atom Feed 34",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Fortnightly Tiger Atom Feed 35",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-monthly Tiger Atom Feed 36",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Monthly Tiger Atom Feed 37",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Quarterly Tiger Atom Feed 38",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-annual Tiger Atom Feed 39",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Annual Tiger Atom Feed 40",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "domain": "apps.com",
+            "name": "PerHour Tiger Atom Feed 41",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18151",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "work-record",
+                "batchSize": 100,
+                "maxRetries": 0
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Minutes Tiger Atom Feed 42",
+            "domain": "apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18152",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "client",
+                "batchSize": 100,
+                "maxRetries": 1
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "Seconds"
+                }
+            }
+        },
+        {
+            "name": "Daily Tiger Atom Feed 43",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Weekly Tiger Atom Feed 44",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Fortnightly Tiger Atom Feed 45",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-monthly Tiger Atom Feed 46",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Monthly Tiger Atom Feed 47",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Quarterly Tiger Atom Feed 48",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-annual Tiger Atom Feed 49",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Annual Tiger Atom Feed 50",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "domain": "apps.com",
+            "name": "PerHour Tiger Atom Feed 51",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18151",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "work-record",
+                "batchSize": 100,
+                "maxRetries": 0
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Minutes Tiger Atom Feed 52",
+            "domain": "apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18152",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "client",
+                "batchSize": 100,
+                "maxRetries": 1
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "Seconds"
+                }
+            }
+        },
+        {
+            "name": "Daily Tiger Atom Feed 53",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Weekly Tiger Atom Feed 54",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Fortnightly Tiger Atom Feed 55",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-monthly Tiger Atom Feed 56",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Monthly Tiger Atom Feed 57",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Quarterly Tiger Atom Feed 58",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-annual Tiger Atom Feed 59",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Annual Tiger Atom Feed 60",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "domain": "apps.com",
+            "name": "PerHour Tiger Atom Feed 61",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18151",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "work-record",
+                "batchSize": 100,
+                "maxRetries": 0
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Minutes Tiger Atom Feed 62",
+            "domain": "apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18152",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "client",
+                "batchSize": 100,
+                "maxRetries": 1
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "Seconds"
+                }
+            }
+        },
+        {
+            "name": "Daily Tiger Atom Feed 63",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Weekly Tiger Atom Feed 64",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Fortnightly Tiger Atom Feed 65",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-monthly Tiger Atom Feed 66",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Monthly Tiger Atom Feed 67",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Quarterly Tiger Atom Feed 68",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-annual Tiger Atom Feed 69",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Annual Tiger Atom Feed 70",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "domain": "apps.com",
+            "name": "PerHour Tiger Atom Feed 71",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18151",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "work-record",
+                "batchSize": 100,
+                "maxRetries": 0
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Minutes Tiger Atom Feed 72",
+            "domain": "apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18152",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "client",
+                "batchSize": 100,
+                "maxRetries": 1
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "Seconds"
+                }
+            }
+        },
+        {
+            "name": "Daily Tiger Atom Feed 73",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Weekly Tiger Atom Feed 74",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Fortnightly Tiger Atom Feed 75",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-monthly Tiger Atom Feed 76",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Monthly Tiger Atom Feed 77",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Quarterly Tiger Atom Feed 78",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-annual Tiger Atom Feed 79",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Annual Tiger Atom Feed 80",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "domain": "apps.com",
+            "name": "PerHour Tiger Atom Feed 81",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18151",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "work-record",
+                "batchSize": 100,
+                "maxRetries": 0
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Minutes Tiger Atom Feed 82",
+            "domain": "apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18152",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "client",
+                "batchSize": 100,
+                "maxRetries": 1
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "Seconds"
+                }
+            }
+        },
+        {
+            "name": "Daily Tiger Atom Feed 83",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Weekly Tiger Atom Feed 84",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Fortnightly Tiger Atom Feed 85",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-monthly Tiger Atom Feed 86",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Monthly Tiger Atom Feed 87",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Quarterly Tiger Atom Feed 88",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-annual Tiger Atom Feed 89",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Annual Tiger Atom Feed 90",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "domain": "apps.com",
+            "name": "PerHour Tiger Atom Feed 91",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18151",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "work-record",
+                "batchSize": 100,
+                "maxRetries": 0
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Minutes Tiger Atom Feed 92",
+            "domain": "apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18152",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "client",
+                "batchSize": 100,
+                "maxRetries": 1
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "Seconds"
+                }
+            }
+        },
+        {
+            "name": "Daily Tiger Atom Feed 93",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Weekly Tiger Atom Feed 94",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Fortnightly Tiger Atom Feed 95",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-monthly Tiger Atom Feed 96",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Monthly Tiger Atom Feed 97",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Quarterly Tiger Atom Feed 98",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 10,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Semi-annual Tiger Atom Feed 99",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 12,
+                    "unit": "PerMinute"
+                }
+            }
+        },
+        {
+            "name": "Annual Tiger Atom Feed 100",
+            "domain": "pwc-apps.com",
+            "payload":
+            {
+                "source": "https://gate.pform.pwc-apps.com:18153",
+                "protocol": "https",
+                "format": "xml",
+                "feed": "atom",
+                "recordType": "trips",
+                "batchSize": 100,
+                "maxRetries": 3
+            },
+            "schedule":
+            {
+                "frequency": {
+                    "size": 15,
+                    "unit": "PerMinute"
+                }
+            }
+        }
+
+    ]
+}

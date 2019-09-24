@@ -1,4 +1,4 @@
-namespace Amber.Spawn
+namespace Spawn
 
 [<AutoOpen>]
 module ConsoleHost =

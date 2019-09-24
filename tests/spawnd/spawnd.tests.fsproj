@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+
+    <IsPackable>false</IsPackable>
+
+    <Authors>Robert Kayman</Authors>
+
+    <Copyright>Copyright © 2019. All rights reserved.</Copyright>
+
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\spawnd\spawnd.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" Version="4.6.2" />
+    <PackageReference Include="FsUnit" Version="3.4.1" />
+    <PackageReference Include="FsUnit.Xunit" Version="3.4.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.2.0" />
+    <PackageReference Include="xunit" Version="2.4.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.1" />
+    <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
+    <PackageReference Include="FSharp.Control.Reactive.Testing" Version="4.2.0" />
+    <PackageReference Include="NodaTime" Version="2.4.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Clock\AlarmClockTests.fs" />
+    <Compile Include="Clock\AlarmIntervalTests.fs" />
+    <Compile Include="ConfigurationTests.fs" />
+  </ItemGroup>
+
+</Project>
