@@ -1,11 +1,11 @@
-module Tests.Spawn.IO.Configuration
+module Tests.Spawn.Configuration
 
 open Xunit
 open Xunit.Abstractions
 open NodaTime
 open FSharpPlus
 open System.Diagnostics
-open Spawn.IO.Configuration
+open Spawn.Configuration
 
 let agenda = {
     alarms =

@@ -59,7 +59,7 @@
             "schedule":
             {
                 "daily": {
-                    "time": "12:00:00",
+                    "time": "12:30:00",
                     "zone": "America/Los_Angeles",
                     "kind": "Everyday"
                 }

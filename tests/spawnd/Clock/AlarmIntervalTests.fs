@@ -1,12 +1,12 @@
 module Tests.Spawn.Clock.AlarmIntervalTests
 
+open Spawn.Clock.Time.Intervals
+open Spawn.Clock.Utilities
+open Spawn.Configuration
 open NodaTime
 open Xunit
 open FsUnit
 open System
-open Spawn.Clock.Time.Intervals
-open Spawn.Clock.Utilities
-open Spawn.IO.Configuration
 
 let toIsoDayOfWeek = function 
     | DayOfWeek.Sunday    -> IsoDayOfWeek.Sunday

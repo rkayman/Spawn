@@ -1,7 +1,9 @@
 namespace Spawn
 
 open Spawn.Clock
-open Spawn.IO.Configuration
+open Spawn.Common
+open Spawn.Configuration
+open Spawn.Messages
 open NodaTime
 open FSharp.Control.Reactive
 open System.Collections.Generic
@@ -11,30 +13,6 @@ open System.Threading
 open System
 
 module Scheduler =
-
-    type Agent<'T> = MailboxProcessor<'T>
-    
-    type internal AutoCancelActor<'T>(body: (Agent<'T> -> Async<unit>), ?token: CancellationToken) =
-        let cts = token |> Option.map (fun t -> CancellationTokenSource.CreateLinkedTokenSource(t))
-                        |> Option.defaultValue (new CancellationTokenSource())
-        let mutable disposed = false
-        
-        let actor = Agent<'T>.Start(body, cts.Token)
-        
-        member internal this.Agent with get() = actor
-        
-        member internal this.Token with get() = cts.Token
-        
-        abstract member Dispose : unit -> unit
-        default this.Dispose() = (this :> IDisposable).Dispose()
-
-        interface IDisposable with
-            member this.Dispose() =
-                if not disposed then
-                    disposed <- true
-                    cts.Cancel()
-                    (actor :> IDisposable).Dispose()
-                    cts.Dispose()
 
     let inline private equals (value: string) (source: string) =
         source.Equals(value, StringComparison.OrdinalIgnoreCase)
@@ -78,24 +56,27 @@ module Scheduler =
         
     type private AlarmCommand =
         | Schedule of Alarm
-        | Info of CommandOption * AsyncReplyChannel<(Guid * AlarmKey) option>
+        | List of CommandOption * AsyncReplyChannel<AlarmInfo option>
         | Trigger of Instant 
     
     type private AlarmConfig =
-        { id: Guid
+        { id:    Guid
           alarm: Alarm option
           timer: IDisposable option }
-        
-    type System.Guid with
-        member x.ToShortString() = x.ToString("N").Substring(19)
     
     let private alarmAccess (timerThread: IScheduler) (log: Agent<_>) (inbox: Agent<_>) =
         let alarmId = Guid.NewGuid()
         let defaultConfig = { id = alarmId; alarm = None; timer = None }
         
+        let inline add1 x = x + 1L
+        
         let onNext (x: Repeater.PetitSonnerie) = Trigger x.Time |> inbox.Post
         let onError e = (alarmId.ToShortString(), e.ToString()) ||> sprintf "ERROR [Alarm %s] %A" |> log.Post
         let onCompleted _ = alarmId.ToShortString() |> sprintf "COMPLETED [Alarm %s]" |> log.Post
+        
+        let inline disposeMaybe disposable =
+            let dispose (x: IDisposable) = x.Dispose()
+            disposable |> Option.iter dispose
         
         let startTimer alarm = async {
             let result = (alarm.schedule, Alarm.Starting None)
@@ -106,18 +87,19 @@ module Scheduler =
         }
         
         let mutable cnt = 0
-        let rec loop config = async {
+        let rec loop config info = async {
             
             try
                 let! msg = inbox.Receive()
                 match msg with
                 | Schedule ax ->
+                    disposeMaybe config.timer
                     let! result = startTimer ax
                     let config' = { config with alarm = Some ax; timer = Some result }
-                    //let config' = { config with alarm = Some ax; timer = None }
-                    return! loop config'
+                    let info' = Some { id = alarmId; domain = ax.domain; name = ax.name; count = 0L; last = None }
+                    return! loop config' info'
                 
-                | Info (option, channel) ->
+                | List (option, channel) ->
                     match config.alarm with
                     | None -> channel.Reply(None)
                     | Some ax ->
@@ -125,21 +107,23 @@ module Scheduler =
                         | ByDomain value -> ax.domain |> matches value
                         | ByName value -> ax.name |> matches value
                         |> function
-                            | true -> channel.Reply(Some (alarmId, { domain = ax.domain; name = ax.name }))
+                            | true  -> channel.Reply(info)
                             | false -> channel.Reply(None)
-                    return! loop config
+                    return! loop config info
                     
                 | Trigger instant ->
-                    (alarmId.ToShortString(), instant) ||> sprintf "INFO [Alarm %s] triggered at %A" |> log.Post
-                    return! loop config
+                    let info' = info |> Option.map (fun x -> { x with count = add1 x.count; last = Some instant })
+                    (config.id.ToShortString(), instant) ||> sprintf "[INFO] Alarm %s triggered at %A" |> log.Post
+                    return! loop config info'
                     
             finally
                 if cnt < 1 then
-                    config.timer |> Option.iter (fun t -> t.Dispose())
-                    alarmId.ToShortString() |> sprintf "Completed Alarm agent: %s" |> log.Post
+                    config.id.ToShortString() |> sprintf "Completing Alarm agent: %s..." |> log.Post
                     cnt <- cnt + 1
+                    disposeMaybe config.timer
+                    config.id.ToShortString() |> sprintf "Completed Alarm agent: %s" |> log.Post
         }
-        loop defaultConfig
+        loop defaultConfig None
             
     type private AlarmActor(timerThread, log, ?token: CancellationToken) =
         inherit AutoCancelActor<AlarmCommand>(alarmAccess timerThread log, ?token = token)
@@ -147,14 +131,14 @@ module Scheduler =
         with
             member this.Schedule(alarm) = this.Agent.Post(Schedule alarm)
             
-            member this.InfoFilteredBy(filter) =
-                let buildMessage = fun ch -> Info (filter, ch)
+            member this.ListIf(filter) =
+                let buildMessage = fun ch -> List (filter, ch)
                 this.Agent.PostAndAsyncReply(buildMessage)
         
     type internal AgendaCommand =
         | Process of Agenda * AsyncReplyChannel<int>
         | Remove of CommandOption * AsyncReplyChannel<int>
-        | List of CommandOption * AsyncReplyChannel<seq<Guid * AlarmKey>>
+        | List of CommandOption * AsyncReplyChannel<seq<AlarmInfo>>
     
     type private AlarmValue = AlarmActor
     type private AlarmDB = ConcurrentDictionary<AlarmKey, AlarmValue>
@@ -205,17 +189,18 @@ module Scheduler =
                     return! loop xs'
 
                 | List (option, channel) ->
-                    let! results = xs |> Seq.map (fun t -> t.Value.InfoFilteredBy(option))
+                    let! results = xs |> Seq.map (fun t -> t.Value.ListIf(option))
                                       |> Async.Parallel
                     results |> Seq.filter (Option.isSome) |> Seq.map (Option.get) |> channel.Reply
                     return! loop xs
                 
             finally
                 if cnt < 1 then
+                    sprintf "Completing Agenda agent..." |> log.Post
+                    cnt <- cnt + 1
+                    xs |> Seq.iter (fun t -> t.Value.Dispose())
                     timerThread.Dispose()
                     sprintf "Completed Agenda agent" |> log.Post
-                    xs |> Seq.iter (fun t -> t.Value.Dispose())
-                    cnt <- cnt + 1
                 
         }
         loop alarms

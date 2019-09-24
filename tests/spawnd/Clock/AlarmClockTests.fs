@@ -1,5 +1,10 @@
 module Tests.Spawn.Clock.ClockTests
 
+open Spawn.Clock
+open Spawn.Clock.Alarm
+open Spawn.Clock.Repeater
+open Spawn.Configuration
+open Spawn.Clock.Time
 open NodaTime
 open Xunit
 open FsUnit
@@ -8,11 +13,6 @@ open FSharp.Control.Reactive.Testing
 open Microsoft.Reactive.Testing
 open System.Reactive.Concurrency
 open System
-open Spawn.Clock
-open Spawn.Clock.Alarm
-open Spawn.Clock.Repeater
-open Spawn.IO.Configuration
-open Spawn.Clock.Time
 
 
 type Rate =

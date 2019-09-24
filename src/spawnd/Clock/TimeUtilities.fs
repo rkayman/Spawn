@@ -55,7 +55,7 @@ module Utilities =
 
 
 module Time =
-    open Spawn.IO.Configuration
+    open Spawn.Configuration
             
     let private scale magnitude period ticks =
         let m, t = decimal magnitude, decimal ticks

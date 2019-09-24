@@ -8,10 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="ConfigurationTests.fs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="FSharpPlus" Version="1.1.0-CI00271" />
     <PackageReference Include="FsUnit" Version="3.4.1" />
     <PackageReference Include="FsUnit.Xunit" Version="3.4.1" />

@@ -1,186 +1,91 @@
 namespace Spawn
 
-open Scheduler
-open Spawn.IO.Messages
-open Spawn.IO.Configuration
-open System
-open System.IO
+open Spawn.Common
+open Spawn.Configuration
+open Spawn.IO
+open Spawn.Messages
+open Spawn.Scheduler
 open System.Reflection
 open System.Threading
+open System
 
 module Program =
-
-    module CommandLine =
-        
-        let private badCommand extraMessage = eprintfn "Bad command %s" extraMessage; Help
-
-        let inline private toUpper (s: string) = s.ToUpper()
-        
-        let inline private equals (x: string) (y: string) = x.Equals(y, StringComparison.OrdinalIgnoreCase)
-
-        let inline private stripQuotes (s: string) = s.Replace("\"", String.Empty, StringComparison.InvariantCulture)
-
-        let private parseHelp _ = Help
-
-        let private parseImport args =
-            match args with
-            | [ x ] when File.Exists(x) -> FileInfo(x) |> Import
-            | _ -> badCommand "or missing file"
-
-        let private parseList args =
-            match args with
-            | [] -> List (ByDomain None)
-            | x :: [] when x |> equals "ByDomain" -> ByDomain None |> List
-            | x :: [] when x |> equals "ByName"   -> ByName None   |> List
-            | x :: y :: [] when x |> equals "ByDomain" -> Some y |> ByDomain |> List
-            | x :: y :: [] when x |> equals "ByName"   -> Some y |> ByName   |> List
-            | _ -> badCommand ""
-
-        let private parseRemove args =
-            match args with
-            | [] -> badCommand ""
-            | x :: y :: [] when x |> equals "ByDomain" -> stripQuotes y |> Some |> ByDomain |> Remove
-            | x :: y :: [] when x |> equals "ByName"   -> stripQuotes y |> Some |> ByName   |> Remove
-            | _ -> badCommand ""
-
-        let private commandMap =
-            [ ("IMPORT", parseImport); ("LIST", parseList); ("REMOVE", parseRemove);
-              ("HELP", parseHelp); ("/h", parseHelp); ("-h", parseHelp); ("-?", parseHelp); ("/?", parseHelp) ]
-            |> Map.ofSeq
-
-        let private isCommand str = str |> toUpper |> commandMap.ContainsKey
-
-        let parseCommandLine args =
-            match args with
-            | [] -> badCommand ""
-            | x :: xs when isCommand x ->
-                let invApply x f = f x
-                let parser = invApply xs
-                commandMap |> Map.find (toUpper x) |> parser
-            | _ -> badCommand ""
 
     [<EntryPoint>]
     let main _ =
         
-        let makeArg (cs: char list) (isQuoted: bool) (xs: string list) =
-            if isQuoted then failwith "Illegal input. Missing closing quote."
-            elif List.length cs = 0 then cs, isQuoted, xs
-            else [], false, List.append xs [String.Concat(cs)]
-        
-        let makeArgs (str: string) =
-            let folder (s: char list * bool * string list) t =
-                let cs, isQuoted, xs = s
-                let ws = [' '; '\n'; '\r']
-                match isQuoted, t with
-                | true, '\"' -> makeArg cs false xs
-                | false, '\"' ->
-                    if List.length cs = 0 then [], true, xs
-                    else failwith "Illegal input. Unexpected double quote character."
-                | false, ch when Seq.contains ch ws ->
-                    if List.length cs = 0 then [], false, xs
-                    else makeArg cs isQuoted xs
-                | _, ch -> List.append cs [ch], isQuoted, xs
-                
-            str.ToCharArray() |> Seq.fold folder ([], false, [])
-                              |> fun (x, y, z) -> makeArg x y z
-                              |> fun (_, _, z) -> z
-
         use cts = new CancellationTokenSource()
+
+        let logger (inbox: Agent<_>) =
+            async {
+                while true do
+                    let! msg = inbox.Receive()
+                    msg |> string |> printfn "%s"
+            }
+        use log = Agent<string>.Start(logger, cts.Token)
         
-        let console (token: CancellationTokenSource) = async {
-
-            let logger (inbox: Agent<_>) =
-                async {
-                    while true do
-                        let! msg = inbox.Receive()
-                        msg |> string |> printfn "%s"
-                }
-            
-            use log = Agent<string>.Start(logger, cts.Token)
-
-            use agendaActor = new AgendaActor(log, token.Token)
-            
-            let cancel (actor: IDisposable) _ =
-                printfn "Quitting console..."
-                actor.Dispose()
-                Async.Sleep(2000) |> Async.RunSynchronously
-            do AppDomain.CurrentDomain.ProcessExit.Add (cancel agendaActor)
-            
-            let limit len (str: string) =
-                match str with
-                | s when s.Length <= len -> s
-                | s -> s.Substring(0, len - 1) |> sprintf "%s…"
+        let processRequest (actor: AgendaActor) (request: Request) =
+            async {
+                match request with
+                | Request.Import json ->
+                    let agenda = readAgenda json
+                                 |> function Ok x -> x | Error e -> raise (new FormatException(e.ToString()))
+                    let! distinct = actor.Process(agenda)
+                    return Imported { total = agenda.alarms.Length; distinct = distinct }
                 
-            let list projection (xs: seq<Guid * AlarmKey>) =
-                xs |> Seq.sortBy projection
-                   |> Seq.map (fun (id, ak) -> (id.ToString("N").Substring(19),
-                                                { domain = limit 12 ak.domain; name = limit 30 ak.name }))
-                   |> Seq.iter (fun (id, ak) -> printfn "%-12s | %-12s | %-30s" id ak.domain ak.name)
-                xs |> Seq.length |> printfn "%d items"
+                | Request.List opt    ->
+                    let list sort xs = xs |> Seq.sortBy sort |> Seq.toArray |> Listed
+                    match opt with
+                    | ByDomain filter ->
+                        let domainSort = fun x -> x.domain, x.name
+                        let! xs = actor.ListDomain(filter)
+                        return xs |> list domainSort
+                    | ByName filter   ->
+                        let nameSort = fun x -> x.name
+                        let! xs = actor.ListName(filter)
+                        return xs |> list nameSort
                 
-            let appVersion = Assembly.GetEntryAssembly().GetName().Version
-            let appTitle = Assembly.GetEntryAssembly().GetCustomAttributes<AssemblyTitleAttribute>()
-                           |> Seq.map (fun x -> x.Title)
-                           |> String.concat ", "
-
-            while not token.IsCancellationRequested do
-                printf "Command :> "
-                let input = Console.ReadLine()
-                let args = makeArgs input
-                let cmd = CommandLine.parseCommandLine args
+                | Request.Remove opt  ->
+                    let! response = match opt with
+                                    | ByDomain filter -> actor.RemoveDomain(filter)
+                                    | ByName filter   -> actor.RemoveName(filter)
+                    return Removed response
                 
-                match cmd with
-                | Import fi ->
-                    try
-                        let! json = File.ReadAllTextAsync(fi.FullName, Text.Encoding.UTF8) |> Async.AwaitTask
-                        let agenda = readAgenda json |> function Ok x -> x | Error e -> raise (new FormatException(e.ToString()))
-                        let! response = agendaActor.Process(agenda)
-                        printfn "Processed %i alarms" response
-                    with
-                    | e -> eprintfn "[ERROR] %A" e; return ()
+                | Request.Version ()  ->
+                    let appVersion = Assembly.GetEntryAssembly().GetName().Version
+                    let appTitle = Assembly.GetEntryAssembly().GetCustomAttributes<AssemblyTitleAttribute>()
+                                   |> Seq.map (fun x -> x.Title)
+                                   |> String.concat ", "
+                    return (appTitle.ToString(), appVersion.ToString())
+                           ||> sprintf "%s\nVersion: %s"
+                           |> VersionReported
+            }
+        
+        let console (logger: Agent<string>) (token: CancellationTokenSource) =
+            async {
+                use spawn = new AgendaActor(logger, token.Token)
+                
+                let cancel _ =
+                    printfn "\nQuitting console..."
+                    spawn.RemoveName(None) |> Async.RunSynchronously
+                                           |> sprintf "Cancelled %d alarms"
+                                           |> log.Post
+                do AppDomain.CurrentDomain.ProcessExit.Add cancel
+                
+                printfn "Spawn daemon started..."
+                while not token.IsCancellationRequested do
+                    use server = new SpawnServer("spawn")                    
+                    let! message = server.GetRequestAsync(token.Token)
+                    match message with
+                    | Error e    -> sprintf "%A" e |> log.Post
+                    | Ok request ->
+                        //request |> sprintf "Received: %A" |> log.Post
+                        let! response = request |> processRequest spawn
+                        server.SendResponseAsync(response, token.Token) |> Async.RunSynchronously |> ignore
+                        //response |> sprintf "Sent: %A" |> log.Post
+            }
 
-                | List (ByDomain filter) ->
-                    let domainProjection = snd
-                    let! response = agendaActor.ListDomain(filter)
-                    list domainProjection response
-                    
-                | List (ByName filter) ->
-                    let nameProjection = fun (_,x) -> x.name
-                    let! response = agendaActor.ListName(filter)
-                    list nameProjection response
-                    
-                | Remove opt ->
-                    let! response =
-                        match opt with
-                        | ByDomain filter -> agendaActor.RemoveDomain(filter)
-                        | ByName filter   -> agendaActor.RemoveName(filter)
-                    printfn "Removed %i alarms" response
-                    do! Async.Sleep(300)
-                    
-                | Help ->
-                    [ appTitle.ToString()
-                      appVersion.ToString() |> sprintf "Version: %s"
-                      ""
-                      "spawnctl <command> <options>"
-                      "See latest documentation at https://spawnctl.github.io"
-                      ""
-                      "Commands:"
-                      "\tIMPORT <path>"
-                      "\tImport the file located at <path>. Format defined at https://spawnctl.github.io"
-                      ""
-                      "\tLIST [ByDomain|ByName] [<filter>]"
-                      "\tList the known alarms sorted by domain or by name and, optionally, matching <filter>"
-                      ""
-                      "\tREMOVE [ByDomain|ByName] <filter>"
-                      "\tRemove an alarm that matches the filter for either the Domain or Name"
-                      ""
-                      "\tHELP"
-                      "\tPrints this text"
-                      "" ]
-                    |> Seq.iter (printfn "    %s")
-        }
-
-        console cts |> Async.Start
+        console log cts |> Async.Start
 
         waitForShutdown()
         0

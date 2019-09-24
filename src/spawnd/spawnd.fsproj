@@ -26,6 +26,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Configuration.fs" />
     <Compile Include="Clock\TimeUtilities.fs" />
     <Compile Include="Clock\AlarmClock.fs" />
     <Compile Include="Messaging.fs" />
@@ -33,23 +34,13 @@
     <Compile Include="ConsoleHost.fs" />
     <Compile Include="Scheduler.fs" />
     <Compile Include="Program.fs" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <Content Include="app.config" />
     <PackageReference Include="FSharp.Core" Version="4.6.2" />
     <PackageReference Include="FSharp.Data" Version="3.1.1" />
     <PackageReference Include="Hopac" Version="0.4.1" />
     <PackageReference Include="Logary" Version="5.0.0-rc.10" />
     <PackageReference Include="NodaTime" Version="2.4.6" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="app.config" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\spwncomm\spwncomm.fsproj" />
   </ItemGroup>
-  
 </Project>

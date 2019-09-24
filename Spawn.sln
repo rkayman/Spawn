@@ -113,4 +113,25 @@ Global
 		{B746EFF4-955A-4A9E-AA9B-B57D1E29F3CC} = {F9867637-3420-4E69-9874-C72E7A2FCA52}
 		{B22A5368-13BB-4BBC-B55E-E6009B2552AD} = {F9867637-3420-4E69-9874-C72E7A2FCA52}
 	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		Policies = $0
+		$0.DotNetNamingPolicy = $1
+		$1.DirectoryNamespaceAssociation = PrefixedHierarchical
+		$0.TextStylePolicy = $2
+		$2.inheritsSet = null
+		$2.scope = text/x-fsharp
+		$0.FSharpFormattingPolicy = $3
+		$3.DefaultFormat = $4
+		$4.IndentOnTryWith = True
+		$4.ReorderOpenDeclaration = True
+		$4.SpaceAfterComma = True
+		$4.SpaceAfterSemicolon = True
+		$4.SpaceAroundDelimiter = True
+		$4.SpaceBeforeArgument = True
+		$4.SpaceBeforeColon = True
+		$4.__added = 0
+		$3.scope = text/x-fsharp
+		$0.StandardHeader = $5
+		$0.VersionControlPolicy = $6
+	EndGlobalSection
 EndGlobal

@@ -4,12 +4,12 @@
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
     <TargetFramework>netcoreapp3.0</TargetFramework>
+    <RootNamespace>Spawn</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Configuration.fs" />
-    <Compile Include="Messages.fs" />
-    <Compile Include="Library.fs" />
+    <Compile Include="Common.fs" />
+    <Compile Include="Pipes.fs" />
   </ItemGroup>
 
   <ItemGroup>

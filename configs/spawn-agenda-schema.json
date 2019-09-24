@@ -101,7 +101,7 @@
             "description": "Rate at which to send a payload request to crawler",
             "type": "object",
             "oneOf": [
-                { "$ref": "#/definitions/Schedule/definitions/RateSchedule" },
+                { "$ref": "#/definitions/Schedule/definitions/FrequencySchedule" },
                 { "$ref": "#/definitions/Schedule/definitions/DailySchedule" },
                 { "$ref": "#/definitions/Schedule/definitions/WeeklySchedule" },
                 { "$ref": "#/definitions/Schedule/definitions/FortnightlySchedule" },
@@ -112,12 +112,12 @@
                 { "$ref": "#/definitions/Schedule/definitions/AnnuallySchedule" }
             ],
             "definitions": {
-                "RateSchedule": {
+                "FrequencySchedule": {
                     "type": "object",
                     "properties": { 
-                        "rate": { "$ref": "#/definitions/Rate" }
+                        "rate": { "$ref": "#/definitions/Frequency" }
                     },
-                    "required": [ "rate" ]
+                    "required": [ "frequency" ]
                 },
                 "DailySchedule": {
                     "properties": {
@@ -169,16 +169,16 @@
                 }
             }
         },
-        "Rate": {
-            "title": "Rate",
+        "Frequency": {
+            "title": "Frequency",
             "description": "Alarm occurs at simple scalar rates",
             "type": "object",
             "properties": {
-                "scale": {
+                "scalar": {
                     "type": "integer",
                     "exclusiveMinimum": 0
                 },
-                "cadence": {
+                "unit": {
                     "type": "string",
                     "enum": [ "Ticks", "Nanoseconds", "Milliseconds", "Seconds", "Minutes", "Hours", "Days", "Weeks", "PerSecond", "PerMinute", "PerHour", "PerDay" ]
                 }

@@ -1,8 +1,8 @@
 namespace Spawn.Clock
 
+open Spawn.Configuration
 open NodaTime
 open FSharp.Control.Reactive
-open Spawn.IO.Configuration
 open System.Reactive
 open System.Reactive.Concurrency
 open System

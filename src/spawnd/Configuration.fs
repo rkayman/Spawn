@@ -1,12 +1,13 @@
-namespace Spawn.IO
+namespace Spawn
+
+open FSharpPlus
+open Fleece.FSharpData.Helpers
+open Fleece.FSharpData.Operators
+open Fleece.FSharpData
+open NodaTime
+open System
 
 module Configuration =
-    open FSharpPlus
-    open Fleece.FSharpData.Helpers
-    open Fleece.FSharpData.Operators
-    open Fleece.FSharpData
-    open NodaTime
-    open System
     
     type Agenda =
         { alarms: Alarm[] }
@@ -285,3 +286,5 @@ module Configuration =
     let readAgenda json : Result<Agenda,_> = parseJson json
 
     let writeAgenda (agenda: Agenda) = toJson agenda |> string
+
+

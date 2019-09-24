@@ -30,6 +30,7 @@
   <ItemGroup>
     <Compile Include="Clock\AlarmClockTests.fs" />
     <Compile Include="Clock\AlarmIntervalTests.fs" />
+    <Compile Include="ConfigurationTests.fs" />
   </ItemGroup>
 
 </Project>
