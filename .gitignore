@@ -290,3 +290,11 @@ __pycache__/
 *.btm.cs
 *.odx.cs
 *.xsd.cs
+
+configs/MOCK-DATA-2.json
+
+configs/MOCK-DATA-3.json
+
+configs/MOCK-DATA-4.json
+
+configs/MOCK-DATA-5.json
