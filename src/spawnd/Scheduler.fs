@@ -160,10 +160,11 @@ module Scheduler =
         let folder (s: AlarmDB * int) (t: Alarm) =
             let key = { domain = t.domain; name = t.name }
             let dict, cnt = s
-            let makeValue _ = new AlarmActor(timerThread, log, token)
+            let mutable cnt' = cnt
+            let makeValue _ = cnt' <- cnt+1; new AlarmActor(timerThread, log, token)
             let actor = dict.GetOrAdd(key, makeValue)
             actor.Schedule(t)
-            dict, cnt + 1
+            dict, cnt'
         
         let mutable cnt = 0
         let rec loop xs = async {
