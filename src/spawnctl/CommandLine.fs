@@ -47,7 +47,7 @@ module CommandLine =
 
     let private parseRemove args =
         match args with
-        | [] -> badCommand ""
+        | [] -> Remove (ByDomain None)
         | x :: y :: [] when x |> isa DomainOption -> stripQuotes y |> Some |> ByDomain |> Remove
         | x :: y :: [] when x |> isa NameOption   -> stripQuotes y |> Some |> ByName   |> Remove
         | _ -> badCommand ""
