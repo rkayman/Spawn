@@ -15,27 +15,53 @@ module IO =
     let _64KB_ = _1KB_ * 64
     let _1MB_  = _1KB_ * _1KB_
     let _10MB_ = _1MB_ * 10
+    
+    let private TimeOut = 30
+    let private _30_SEC_ = 30_000
 
     exception PipeNotConnected
     exception PipeCannotWrite
+
+    // Server: Read => Decompress => Deserialize => Process => Serialize => Compress => Write
+    // Server.HandleMessage<'Request, 'Response>: CancellationToken(30 seconds) -> unit
+    //    Read:        CancellationToken -> Result<Compressed, Exception>
+    //    Decompress:  Compressed -> Result<Serialized, Exception>
+    //    Deserialize: Serialized -> Result<'Request, Exception>
+    //    Process:     'Request -> Result<'Response, Exception>
+    //    Serialize:   'Response -> Result<Serialized, Exception>
+    //    Compress:    Serialized -> Result<Compressed, Exception>
+    //    Write:       Compressed -> Result<unit, Exception>
+    
+    // Client: Serialize => Compress => Write => Read => Decompress => Deserialize
+    // Client.ExecuteRequest<'Request, 'Response>: Request => CancellationToken => Result<'Response, Exception>
+    //    Serialize:   'Request -> Result<Serialized, Exception>
+    //    Compress:    Serialized -> Result<Compressed, Exception>
+    //    Write:       Compressed -> Result<unit, Exception>
+    //    Read:        CancellationToken -> Result<Compressed, Exception>
+    //    Decompress:  Compressed -> Result<Serialized, Exception>
+    //    Deserialize: Serialized -> Result<'Response, Exception>
     
     let private readMessageAsync (pipe: PipeStream) (token: CancellationToken) =
         let buffer : byte [] = Array.zeroCreate _4KB_
-        let builder = StringBuilder(_64KB_, _1MB_)
+        let builder = StringBuilder(_64KB_, _10MB_)
+        let cts = CancellationTokenSource.CreateLinkedTokenSource(token)
+        cts.CancelAfter(_30_SEC_)
         
         let rec readLoopAsync (stream: PipeStream) (token: CancellationToken)
                               (buf: byte[]) (sb: StringBuilder) isComplete =
             async {
-                if isComplete then
-                    return sb.ToString().Trim('\x00') |> Ok
-                else
-                    let! bytesRead = stream.ReadAsync(buf.AsMemory(), token).AsTask() |> Async.AwaitTask
-                    let chunk = Encoding.UTF8.GetString(ReadOnlySpan(buf, 0, bytesRead))
-                    let complete' = chunk.EndsWith("\x00\x00", StringComparison.Ordinal)
-                    sb.Append(chunk) |> ignore
-                    return! readLoopAsync stream token buf sb complete'
+                try
+                    if isComplete then
+                        return sb.ToString().Trim('\x00') |> Ok
+                    else
+                        let! bytesRead = stream.ReadAsync(buf.AsMemory(), token).AsTask() |> Async.AwaitTask
+                        let chunk = Encoding.UTF8.GetString(ReadOnlySpan(buf, 0, bytesRead))
+                        let isComplete' = chunk.EndsWith("\x00\x00", StringComparison.Ordinal)
+                        sb.Append(ReadOnlySpan(chunk.ToCharArray())) |> ignore
+                        return! readLoopAsync stream token buf sb isComplete'
+                with ex -> return ex.ToString() |> Error
             }
-        readLoopAsync pipe token buffer builder false
+        readLoopAsync pipe cts.Token buffer builder false
         
     let private writeMessageAsync (pipe: PipeStream) (token: CancellationToken) (message: string) =
         let endMessage = Encoding.UTF8.GetBytes([|'\x00';'\x00'|]) |> ReadOnlyMemory
@@ -44,10 +70,12 @@ module IO =
         elif not pipe.CanWrite then raise PipeCannotWrite
         else
             try
+                let cts = CancellationTokenSource.CreateLinkedTokenSource(token)
+                cts.CancelAfter(_30_SEC_)
                 async {
-                    do! pipe.WriteAsync(ReadOnlyMemory(bytes), token).AsTask() |> Async.AwaitTask
-                    do! pipe.WriteAsync(endMessage, token).AsTask() |> Async.AwaitTask
-                    do! pipe.FlushAsync(token) |> Async.AwaitTask
+                    do! pipe.WriteAsync(ReadOnlyMemory(bytes), cts.Token).AsTask() |> Async.AwaitTask
+                    do! pipe.WriteAsync(endMessage, cts.Token).AsTask() |> Async.AwaitTask
+                    do! pipe.FlushAsync(cts.Token) |> Async.AwaitTask
                     pipe.WaitForPipeDrain()
                 } |> Async.RunSynchronously |> Ok
             with ex -> sprintf "%A" ex |> Error
@@ -61,8 +89,8 @@ module IO =
         let defaultWindowBits = 22  // https://github.com/dotnet/corefx/blob/master/src/System.IO.Compression.Brotli/src/System/IO/Compression/BrotliUtils.cs
         match BrotliEncoder.TryCompress(ReadOnlySpan(msg), Span(compressed),
                                         bytesWritten, quality, defaultWindowBits) with
-        | true  -> compressed |> Convert.ToBase64String |> Ok
         | false -> "Failed to compress message" |> Error
+        | true  -> compressed |> Convert.ToBase64String |> Ok
         
     let decompress message =
         let decompressed : byte [] = Array.zeroCreate _10MB_
@@ -105,7 +133,7 @@ module IO =
         member this.SendRequestAsync(request: Request, token: CancellationToken) =
             async {
                 if not pipe.IsConnected then
-                    do! pipe.ConnectAsync(token) |> Async.AwaitTask
+                    do! pipe.ConnectAsync(TimeOut, token) |> Async.AwaitTask
                 return request.Serialize() >>= compress >>= writeMessageAsync pipe token
             }
             
