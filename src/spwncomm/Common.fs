@@ -36,9 +36,11 @@ module Messages =
                 Version <!> jreq "version" (function Version _ -> Some () | _ -> None)
             ]
 
-        static member Deserialize(json) : Result<Request,_> = parseJson json |> Result.mapError (sprintf "%A")
+        static member Deserialize(json) : Request =
+            parseJson json
+            |> Result.either (id) (sprintf "%A" >> invalidOp)
         
-        member this.Serialize() = this |> toJson |> string |> Ok
+        member this.Serialize() = this |> toJson |> string
 
     type ImportedInfo =
         { total: int
@@ -93,14 +95,15 @@ module Messages =
                 VersionReported <!> jreq "version"  (function VersionReported x -> Some x | _ -> None)
             ]
             
-        static member Deserialize(json) : Result<Response,_> = parseJson json |> Result.mapError (sprintf "%A")
-            
-        member this.Serialize() = this |> toJson |> string |> Ok
+        static member Deserialize(json) : Response =
+            parseJson json
+            |> Result.either (id) (sprintf "%A" >> invalidOp)
+
+    
+        member this.Serialize() = this |> toJson |> string
 
 
 module Common =
-            
-    let internal lift = function Ok x -> x | Error e -> failwithf "%A" e
     
     type System.Guid with
         member this.ToShortString() = this.ToString("N").Substring(20)
@@ -125,6 +128,6 @@ module Common =
             member this.Dispose() =
                 if not disposed then
                     disposed <- true
-//                    cts.Cancel()
+                    cts.Cancel()
                     (actor :> IDisposable).Dispose()
                     cts.Dispose()
