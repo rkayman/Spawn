@@ -1,13 +1,13 @@
 ﻿namespace Spawn
 
-open CommandLine
 open Common
-open IO
+open IO.Pipes
 open Messages
 open NodaTime
 open System.Globalization
 open System.Reflection
 open System.Threading
+open System.Threading.Tasks
 open System
 
 module CLI =
@@ -41,12 +41,11 @@ module CLI =
     
         let command = args |> Array.toList |> CommandLine.parseCommandLine
 
+        let timeout = TimeSpan.FromSeconds(10.)
         use cts = new CancellationTokenSource()
         use mre = new ManualResetEventSlim(false)
         do attachCtrlcSigtermShutdown cts mre (Some "Cancelling operation...")
         mre.Set()
-
-        use clientPipe = new SpawnClient(".", "spawn")
         
         let limit len (str: string) =
             match str with
@@ -91,24 +90,32 @@ module CLI =
                        |> Seq.map (fun x -> x.Title)
                        |> String.concat ", "
         
-        match command |> toRequest cts.Token with
-        | Choice1Of3 request ->
-            async {
-                let! _ = clientPipe.SendRequestAsync(request, cts.Token)
-                let! response = clientPipe.GetResponseAsync(cts.Token)
-                return response
-            } |> Async.RunSynchronously
-            |> Result.map handleResponse
-            |> Result.mapError (eprintfn "%s")
-            |> ignore
-        
-        | Choice2Of3 help ->
-            help
-            |> List.append [ appTitle.ToString(); appVersion.ToString() |> sprintf "Version: %s" ]
-            |> Seq.iter (printfn "    %s")
+        try
+            cts.CancelAfter(timeout)
+            match command |> CommandLine.toRequest cts.Token with
+            | Choice1Of3 request ->
+                use client = new SpawnClient(".", "spawn", cts.Token)
+                async {
+                    let serializer (request: Request) = request.Serialize()
+                    let deserializer = Response.Deserialize
+                    let! response = client.SendAsync(request, serializer, deserializer)
+                    
+                    response
+                    |> Result.map handleResponse
+                    |> Result.mapError (string >> eprintfn "%s")
+                    |> ignore
+                } |> Async.RunSynchronously
             
-        | Choice3Of3 error ->
-            eprintfn "[ERROR] %s" error
+            | Choice2Of3 help ->
+                help
+                |> List.append [ appTitle.ToString(); appVersion.ToString() |> sprintf "Version: %s" ]
+                |> Seq.iter (printfn "    %s")
+                
+            | Choice3Of3 error ->
+                eprintfn "[ERROR] %s" error
+
+        with
+            | :? TaskCanceledException -> printfn "Operation timed out"
 
         0
         

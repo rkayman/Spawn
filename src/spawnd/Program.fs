@@ -1,10 +1,11 @@
 namespace Spawn
 
-open Spawn.Common
-open Spawn.Configuration
-open Spawn.IO
-open Spawn.Messages
-open Spawn.Scheduler
+open Common
+open Configuration
+open IO.Pipes
+open Messages
+open Scheduler
+open FsToolkit.ErrorHandling
 open System.Reflection
 open System.Threading
 open System
@@ -13,23 +14,25 @@ module Program =
 
     [<EntryPoint>]
     let main _ =
+        printfn "Spawn daemon starting..."
         
         use cts = new CancellationTokenSource()
 
-        let logger (inbox: Agent<_>) =
+        let logMessage (inbox: Agent<_>) =
             async {
                 while true do
                     let! msg = inbox.Receive()
                     msg |> string |> printfn "%s"
             }
-        use log = Agent<string>.Start(logger, cts.Token)
+        use logger = Agent<string>.Start(logMessage, cts.Token)
         
         let processRequest (actor: AgendaActor) (request: Request) =
             async {
                 match request with
                 | Request.Import json ->
                     let agenda = readAgenda json
-                                 |> function Ok x -> x | Error e -> raise (new FormatException(e.ToString()))
+                                 |> function Ok x    -> x
+                                           | Error e -> raise (new FormatException(e.ToString()))
                     let! distinct = actor.Process(agenda)
                     return Imported { total = agenda.alarms.Length; distinct = distinct }
                 
@@ -61,31 +64,27 @@ module Program =
                            |> VersionReported
             }
         
-        let console (logger: Agent<string>) (token: CancellationTokenSource) =
+        let listen (logger: Agent<string>) (actor: AgendaActor) (listener: SpawnServer) =
             async {
-                use spawn = new AgendaActor(logger, token.Token)
-                
                 let cancel _ =
                     printfn "\nQuitting console..."
-                    spawn.RemoveName(None) |> Async.RunSynchronously
+                    actor.RemoveName(None) |> Async.RunSynchronously
                                            |> sprintf "Cancelled %d alarms"
-                                           |> log.Post
+                                           |> logger.Post
                 do AppDomain.CurrentDomain.ProcessExit.Add cancel
                 
+                let handler = processRequest actor >> Async.RunSynchronously
+                let serializer (response: Response) = response.Serialize()
+                let deserializer = Request.Deserialize
+                
                 printfn "Spawn daemon started..."
-                while not token.IsCancellationRequested do
-                    use server = new SpawnServer("spawn")                    
-                    let! message = server.GetRequestAsync(token.Token)
-                    match message with
-                    | Error e    -> sprintf "%A" e |> log.Post
-                    | Ok request ->
-                        //request |> sprintf "Received: %A" |> log.Post
-                        let! response = request |> processRequest spawn
-                        server.SendResponseAsync(response, token.Token) |> Async.RunSynchronously |> ignore
-                        //response |> sprintf "Sent: %A" |> log.Post
+                do! listener.StartAsync(handler, serializer, deserializer)
             }
 
-        console log cts |> Async.Start
+        use agenda = new AgendaActor(logger, cts.Token)
+        use server = new SpawnServer("spawn", cts.Token)
+        
+        server |> listen logger agenda |> Async.Start
 
         waitForShutdown()
         0
