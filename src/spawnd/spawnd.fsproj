@@ -35,8 +35,9 @@
     <Compile Include="Scheduler.fs" />
     <Compile Include="Program.fs" />
     <Content Include="app.config" />
-    <PackageReference Include="FSharp.Core" Version="4.6.2" />
+    <PackageReference Include="FSharp.Core" Version="4.7.0" />
     <PackageReference Include="FSharp.Data" Version="3.1.1" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="1.2.3" />
     <PackageReference Include="Hopac" Version="0.4.1" />
     <PackageReference Include="Logary" Version="5.0.0-rc.10" />
     <PackageReference Include="NodaTime" Version="2.4.6" />
