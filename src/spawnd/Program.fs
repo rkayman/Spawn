@@ -1,10 +1,10 @@
 namespace Spawn
 
-open Common
-open Configuration
-open IO.Pipes
-open Messages
-open Scheduler
+open Spawn.Common
+open Spawn.Configuration
+open Spawn.IO.Pipes
+open Spawn.Messages
+open Spawn.Scheduler
 open FsToolkit.ErrorHandling
 open System.Reflection
 open System.Threading
@@ -14,17 +14,8 @@ module Program =
 
     [<EntryPoint>]
     let main _ =
-        printfn "Spawn daemon starting..."
-        
-        use cts = new CancellationTokenSource()
 
-        let logMessage (inbox: Agent<_>) =
-            async {
-                while true do
-                    let! msg = inbox.Receive()
-                    msg |> string |> printfn "%s"
-            }
-        use logger = Agent<string>.Start(logMessage, cts.Token)
+        printfn "Spawn daemon starting..."
         
         let processRequest (actor: AgendaActor) (request: Request) =
             async {
@@ -69,7 +60,7 @@ module Program =
                 let cancel _ =
                     printfn "\nQuitting console..."
                     actor.RemoveName(None) |> Async.RunSynchronously
-                                           |> sprintf "Cancelled %d alarms"
+                                           |> sprintf "Canceled %d alarms"
                                            |> logger.Post
                 do AppDomain.CurrentDomain.ProcessExit.Add cancel
                 
@@ -80,7 +71,16 @@ module Program =
                 printfn "Spawn daemon started..."
                 do! listener.StartAsync(handler, serializer, deserializer)
             }
+        
+        let logMessage (inbox: Agent<_>) =
+            async {
+                while true do
+                    let! msg = inbox.Receive()
+                    msg |> string |> printfn "%s"
+            }
+        use logger = Agent<string>.Start(logMessage)
 
+        use cts = new CancellationTokenSource()
         use agenda = new AgendaActor(logger, cts.Token)
         use server = new SpawnServer("spawn", cts.Token)
         
@@ -88,54 +88,3 @@ module Program =
 
         waitForShutdown()
         0
-
-(*
-    let main argv =
-
-        let logary =
-          Config.create "svc" "localhost"
-          |> Config.target (LiterateConsole.create LiterateConsole.empty "nice console")
-          |> Config.ilogger (ILogger.LiterateConsole Info)
-          |> Config.build
-          |> run
-        let logger = logary.getLogger "spawnd"
-        logary.flushPending() |> run
-
-        let logMessage msgFactory steps result =
-            sprintf "Step %2d = %d" steps result |> Message.eventX |> msgFactory
-            logary.flushPending() |> run
-
-        let logInfo = logMessage logger.info
-        let logDebug = logMessage logger.debug
-
-        use cts = new CancellationTokenSource()
-        printfn "Press Ctrl-C to exit..."
-
-        let per str =
-            let toDigit ch = int64 ch - int64 '0'
-            let rec loop str cnt =
-                let total = str |> Seq.map toDigit
-                                |> Seq.reduce (*)
-                logInfo cnt total
-                if total > 9L then loop (string total) (cnt+1)
-                else total, cnt
-            if String.length str = 0 then 0L, 0
-            else loop str 1
-
-        let run () = async {
-            let cancel _ = printfn "Quitting inner loop..."
-            do AppDomain.CurrentDomain.ProcessExit.Add cancel
-
-            while not cts.IsCancellationRequested do
-                printf "\nEnter number: "
-                Console.ReadLine() |> per |> ignore
-                do! Async.Sleep 100
-        }
-
-        run () |> Async.Start
-
-        waitForShutdown ()
-
-        printfn "\nDone."
-        0
-*)
