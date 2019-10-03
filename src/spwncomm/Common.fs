@@ -127,7 +127,10 @@ module Common =
         interface IDisposable with
             member this.Dispose() =
                 if not disposed then
-                    disposed <- true
-                    cts.Cancel()
-                    (actor :> IDisposable).Dispose()
-                    cts.Dispose()
+                    try
+                        disposed <- true
+                        (actor :> IDisposable).Dispose()
+                        cts.Dispose()
+                    with
+                        | :? ObjectDisposedException -> ()
+                        
