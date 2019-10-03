@@ -14,9 +14,9 @@
 
   <ItemGroup>
     <PackageReference Include="Fleece.FSharpData" Version="0.8.0-alpha-3" />
-    <PackageReference Include="FSharpPlus" Version="1.1.0-CI00271" />
+    <PackageReference Include="FSharpPlus" Version="1.1.0-CI00272" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="1.2.3" />
-    <PackageReference Include="NodaTime" Version="2.4.6" />
+    <PackageReference Include="NodaTime" Version="2.4.7" />
   </ItemGroup>
 
 </Project>

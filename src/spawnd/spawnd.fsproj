@@ -26,21 +26,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Logging.fs" />
     <Compile Include="Configuration.fs" />
     <Compile Include="Clock\TimeUtilities.fs" />
     <Compile Include="Clock\AlarmClock.fs" />
-    <Compile Include="Messaging.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="ConsoleHost.fs" />
     <Compile Include="Scheduler.fs" />
     <Compile Include="Program.fs" />
     <Content Include="app.config" />
     <PackageReference Include="FSharp.Core" Version="4.7.0" />
-    <PackageReference Include="FSharp.Data" Version="3.1.1" />
+    <PackageReference Include="FSharp.Data" Version="3.3.2" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="1.2.3" />
     <PackageReference Include="Hopac" Version="0.4.1" />
-    <PackageReference Include="Logary" Version="5.0.0-rc.10" />
-    <PackageReference Include="NodaTime" Version="2.4.6" />
+    <PackageReference Include="Logary" Version="5.0.0" />
+    <PackageReference Include="NodaTime" Version="2.4.7" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
     <ProjectReference Include="..\spwncomm\spwncomm.fsproj" />
   </ItemGroup>
