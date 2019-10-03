@@ -199,8 +199,6 @@ module Scheduler =
                 if cnt < 1 then
                     sprintf "Completing Agenda agent..." |> log.Post
                     cnt <- cnt + 1
-                    xs |> Seq.iter (fun t -> t.Value.Dispose())
-                    xs.Count |> sprintf "Cancelled %d alarms" |> log.Post
                     timerThread.Dispose()
                     sprintf "Completed Agenda agent" |> log.Post
                 
