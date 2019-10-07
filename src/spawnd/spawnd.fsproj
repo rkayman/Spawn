@@ -4,8 +4,8 @@
     <RootNamespace>Spawn</RootNamespace>
     <Title>Spawn Daemon</Title>
     <Authors>Robert Kayman</Authors>
-    <Description>A cron-like daemon with low system resource usage.</Description>
-    <Copyright>Copyright © 2018 Robert Kayman. All rights reserved.</Copyright>
+    <Description>A cron-like daemon</Description>
+    <Copyright>Copyright © 2019 Robert Kayman. All rights reserved.</Copyright>
     <TargetFramework>netcoreapp3.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <Product>Spawn</Product>
@@ -20,26 +20,24 @@
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
-  
+
   <PropertyGroup>
     <ServerGarbageCollection>true</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Logging.fs" />
     <Compile Include="Configuration.fs" />
     <Compile Include="Clock\TimeUtilities.fs" />
     <Compile Include="Clock\AlarmClock.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="ConsoleHost.fs" />
     <Compile Include="Scheduler.fs" />
-    <Compile Include="Program.fs" />
+    <Compile Include="Daemon.fs" />
     <Content Include="app.config" />
     <PackageReference Include="FSharp.Core" Version="4.7.0" />
     <PackageReference Include="FSharp.Data" Version="3.3.2" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="1.2.3" />
-    <PackageReference Include="Hopac" Version="0.4.1" />
-    <PackageReference Include="Logary" Version="5.0.0" />
     <PackageReference Include="NodaTime" Version="2.4.7" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
     <ProjectReference Include="..\spwncomm\spwncomm.fsproj" />

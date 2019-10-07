@@ -1,13 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <RootNamespace>Spawn</RootNamespace>
+    <Title>Spawn Common</Title>
+    <Authors>Robert Kayman</Authors>
+    <Description>Common utilities for cron-like daemon</Description>
+    <Copyright>Copyright © 2019 Robert Kayman. All rights reserved.</Copyright>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <Product>Spawn</Product>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
-    <TargetFramework>netcoreapp3.0</TargetFramework>
-    <RootNamespace>Spawn</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Logging.fs" />
     <Compile Include="Pipes.fs" />
     <Compile Include="Common.fs" />
   </ItemGroup>
@@ -16,6 +27,8 @@
     <PackageReference Include="Fleece.FSharpData" Version="0.8.0-alpha-3" />
     <PackageReference Include="FSharpPlus" Version="1.1.0-CI00272" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="1.2.3" />
+    <PackageReference Include="Hopac" Version="0.4.1" />
+    <PackageReference Include="Logary" Version="5.0.0" />
     <PackageReference Include="NodaTime" Version="2.4.7" />
   </ItemGroup>
 
