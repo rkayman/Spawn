@@ -13,11 +13,13 @@ module Messages =
     type RequestOption =
         | ByDomain of string option
         | ByName of string option
+        | ById of string option
     with
         static member JsonObjCodec =
             jchoice [
                 ByDomain <!> jreq "by-domain" (function ByDomain x -> Some x | _ -> None)
                 ByName   <!> jreq "by-name"   (function ByName x -> Some x | _ -> None)
+                ById     <!> jreq "by-id"     (function ById x -> Some x | _ -> None)
             ]
 
     type Json = string
@@ -98,20 +100,18 @@ module Messages =
         static member Deserialize(json) : Response =
             parseJson json
             |> Result.either (id) (sprintf "%A" >> invalidOp)
-
     
         member this.Serialize() = this |> toJson |> string
 
 
-module Common =
-    
+module Common =    
     type System.Guid with
         member this.ToShortString() = this.ToString("N").Substring(20)
 
     type Agent<'T> = MailboxProcessor<'T>
     
-    type AutoCancelActor<'T>(body: (Agent<'T> -> Async<unit>), ?token: CancellationToken) =
-        let cts = token |> Option.map (fun t -> CancellationTokenSource.CreateLinkedTokenSource(t))
+    type AutoCancelActor<'T>(body: (Agent<'T> -> Async<unit>), log: Logging.Log, ?token: CancellationToken) =
+        let cts = token |> Option.map (fun t -> CancellationTokenSource.CreateLinkedTokenSource([|t|]))
                         |> Option.defaultValue (new CancellationTokenSource())
         let mutable disposed = false
         
@@ -126,11 +126,14 @@ module Common =
 
         interface IDisposable with
             member this.Dispose() =
+                "Disposing actor" |> log.Debug
                 if not disposed then
                     try
                         disposed <- true
+                        if not cts.IsCancellationRequested then cts.Cancel()
                         (actor :> IDisposable).Dispose()
                         cts.Dispose()
+                        "Actor disposed" |> log.Debug
                     with
                         | :? ObjectDisposedException -> ()
                         

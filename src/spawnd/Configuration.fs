@@ -286,5 +286,3 @@ module Configuration =
     let readAgenda json : Result<Agenda,_> = parseJson json
 
     let writeAgenda (agenda: Agenda) = toJson agenda |> string
-
-

@@ -10,7 +10,6 @@ open System.Threading
 open System
 
 module IO =
-    
     let _1KB_  = 1024
     let _8KB_  = _1KB_ * 8
     let _64KB_ = _1KB_ * 64
@@ -23,6 +22,8 @@ module IO =
     exception PipeCannotWrite
     
     module Pipes =
+        let log = Spawn.Logging.Log("Spawn.IO.Pipes")
+        
         type Compressed = Compressed of string
         type Serialized = Serialized of string
         type Message<'T> = Message of 'T
@@ -134,72 +135,75 @@ module IO =
                 } |> Async.RunSynchronously
 
         type SpawnServer(pipeName, ?token: CancellationToken) =
+            let log = Logging.Log("Spawn.IO.Pipes.SpawnServer")
             
             let pipe = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1,
                                                  PipeTransmissionMode.Byte,
                                                  PipeOptions.WriteThrough ||| PipeOptions.Asynchronous)
             
-            let cancelToken = token |> Option.map (fun t -> CancellationTokenSource.CreateLinkedTokenSource([|t|]))
-                                    |> Option.defaultValue (new CancellationTokenSource())
+            let serverCancel = token |> Option.map (fun t -> CancellationTokenSource.CreateLinkedTokenSource([|t|]))
+                                     |> Option.defaultValue (new CancellationTokenSource())
             
             member this.StartAsync(handler, serializer, deserializer) =
                 async {
-                    while not cancelToken.IsCancellationRequested do
-                        use operationTimeout = CancellationTokenSource.CreateLinkedTokenSource([|cancelToken.Token|])
+                    while not serverCancel.IsCancellationRequested do
+                        use opCancel = CancellationTokenSource.CreateLinkedTokenSource([|serverCancel.Token|])
                         
                         if not pipe.IsConnected then
-                            printfn "Waiting for connection..."
-                            do! pipe.WaitForConnectionAsync(operationTimeout.Token) |> Async.AwaitTask
-                            operationTimeout.CancelAfter(DefaultTimeout)
-                            pipe.GetImpersonationUserName() |> printfn "Connected as %s"
+                            "Waiting for connection..." |> log.Info
+                            do! pipe.WaitForConnectionAsync(opCancel.Token) |> Async.AwaitTask
+                            opCancel.CancelAfter(DefaultTimeout)
+                            pipe.GetImpersonationUserName() |> sprintf "Connected as %s" |> log.Info
                         
                         try
-                            readAsync pipe operationTimeout.Token
+                            readAsync pipe opCancel.Token
                             |> Result.bind decompress
                             |> Result.bind (deserializeMessage deserializer)
                             |> Result.bind (handleRequest handler)
                             |> Result.bind (serializeMessage serializer)
                             |> Result.bind compress
-                            |> Result.bind (writeAsync pipe operationTimeout.Token)
+                            |> Result.bind (writeAsync pipe opCancel.Token)
                             |> ignore
                         
                         finally
                             pipe.Disconnect()
-                            printfn "Disconnected"
+                            "Disconnected" |> log.Info
                 }
                     
                 
             interface IDisposable with
                 member this.Dispose() =
-                    cancelToken.Cancel()
+                    "Disposing SpawnServer" |> log.Debug
+                    serverCancel.Cancel()
                     pipe.Dispose()
-                    cancelToken.Dispose()
+                    serverCancel.Dispose()
+                    "SpawnServer disposed" |> log.Debug
         
         type SpawnClient(serverName, pipeName, ?token: CancellationToken) =
             
             let pipe = new NamedPipeClientStream(serverName, pipeName, PipeDirection.InOut,
                                                  PipeOptions.Asynchronous ||| PipeOptions.WriteThrough)
             
-            let cancelToken = token |> Option.map (fun t -> CancellationTokenSource.CreateLinkedTokenSource([|t|]))
-                                    |> Option.defaultValue (new CancellationTokenSource())
+            let clientCancel = token |> Option.map (fun t -> CancellationTokenSource.CreateLinkedTokenSource([|t|]))
+                                     |> Option.defaultValue (new CancellationTokenSource())
             
             member this.SendAsync(request, serializer, deserializer) =
-                cancelToken.CancelAfter(DefaultTimeout)
+                clientCancel.CancelAfter(DefaultTimeout)
                 
                 async {
                     if not pipe.IsConnected then
-                        do! pipe.ConnectAsync(cancelToken.Token) |> Async.AwaitTask
+                        do! pipe.ConnectAsync(clientCancel.Token) |> Async.AwaitTask
                     
                     request
                     |> Result.Ok
                     |> Result.map Message
                     |> Result.bind (serializeMessage serializer)
                     |> Result.bind compress
-                    |> Result.bind (writeAsync pipe cancelToken.Token)
+                    |> Result.bind (writeAsync pipe clientCancel.Token)
                     |> ignore
                     
                     return
-                        readAsync pipe cancelToken.Token
+                        readAsync pipe clientCancel.Token
                         |> Result.bind decompress
                         |> Result.bind (deserializeMessage deserializer)
                         |> Result.bind (function Message x -> Ok x)
@@ -207,6 +211,6 @@ module IO =
             
             interface IDisposable with
                 member this.Dispose() =
-                    cancelToken.Cancel()
+                    clientCancel.Cancel()
                     pipe.Dispose()
-                    cancelToken.Dispose()
+                    clientCancel.Dispose()

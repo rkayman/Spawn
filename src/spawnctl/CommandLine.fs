@@ -35,14 +35,18 @@ module CommandLine =
     let private DomainOption = ["--domain"; "-d"]
 
     let private NameOption   = ["--name"; "-n"]
+    
+    let private IdOption     = ["--id"; "-id"]
 
     let private parseList args =
         match args with
         | [] -> List (ByDomain None)
         | x :: [] when x |> isa DomainOption -> ByDomain None |> List
         | x :: [] when x |> isa NameOption   -> ByName None   |> List
+        | x :: [] when x |> isa IdOption     -> ById None     |> List
         | x :: y :: [] when x |> isa DomainOption -> Some y |> ByDomain |> List
         | x :: y :: [] when x |> isa NameOption   -> Some y |> ByName   |> List
+        | x :: y :: [] when x |> isa IdOption     -> Some y |> ById     |> List
         | _ -> badCommand ""
 
     let private parseRemove args =
@@ -50,6 +54,7 @@ module CommandLine =
         | [] -> Remove (ByDomain None)
         | x :: y :: [] when x |> isa DomainOption -> stripQuotes y |> Some |> ByDomain |> Remove
         | x :: y :: [] when x |> isa NameOption   -> stripQuotes y |> Some |> ByName   |> Remove
+        | x :: y :: [] when x |> isa IdOption     -> stripQuotes y |> Some |> ById     |> Remove
         | _ -> badCommand ""
 
     let private commandMap =
@@ -104,6 +109,9 @@ module CommandLine =
               ""
               "\tREMOVE [--name <filter>]"
               "\tRemove an alarm that matches the filter on alarm names"
+              ""
+              "\tREMOVE [--id <id>]"
+              "\tRemove an alarm that matches the 12-character id with the alarm identity"
               ""
               "\tVERSION"
               "\tRetrieves daemon version information"
