@@ -13,10 +13,6 @@ open System.Threading
 open System
 
 module Scheduler =
-    let log = Logging.Log("Spawn.Scheduler")
-    let alarmLog = Logging.Log("Spawn.Scheduler.AlarmActor")
-    let agendaLog = Logging.Log("Spawn.Scheduler.AgendaActor")
-
     let inline private equals (value: string) (source: string) =
         source.Equals(value, StringComparison.OrdinalIgnoreCase)
         
@@ -134,10 +130,12 @@ module Scheduler =
                     config.id.ToShortString() |> sprintf "Completed Alarm agent: %s" |> log.Info
         }
         loop defaultConfig None
-            
-    type private AlarmActor(timerThread, ?token: CancellationToken) =
-        inherit AutoCancelActor<AlarmCommand>(alarmAccess timerThread alarmLog, alarmLog, ?token = token)
         
+    let alarmLog mgr = Logging.Log(mgr, "Spawn.Scheduler.AlarmActor")
+    type private AlarmActor(timerThread, logMgr, ?token: CancellationToken) =
+        inherit AutoCancelActor<AlarmCommand>(alarmAccess timerThread (alarmLog logMgr),
+                                              alarmLog logMgr,
+                                              ?token = token)        
         with
             member this.Id with get() = let buildMessage = fun ch -> Identity ch
                                         this.Agent.PostAndReply(buildMessage)
@@ -158,7 +156,9 @@ module Scheduler =
     type private AlarmDB = ConcurrentDictionary<AlarmKey, AlarmValue>
     type private AlarmKVP = KeyValuePair<AlarmKey, AlarmValue>
     
-    let private agendaAccess (log: Logging.Log) token (inbox: Agent<_>) =
+    let agendaLog mgr = Logging.Log(mgr, "Spawn.Scheduler.AgendaActor")
+    let private agendaAccess token logMgr (inbox: Agent<_>) =
+        let log = agendaLog logMgr
         let alarms = AlarmDB(Environment.ProcessorCount, 1200)
         let timerThread = new EventLoopScheduler()
         
@@ -185,7 +185,7 @@ module Scheduler =
             let key = { domain = t.domain; name = t.name }
             let dict, cnt = s
             let mutable cnt' = cnt
-            let makeValue _ = cnt' <- cnt+1; new AlarmActor(timerThread, token)
+            let makeValue _ = cnt' <- cnt+1; new AlarmActor(timerThread, logMgr, token)
             let actor = dict.GetOrAdd(key, makeValue)
             actor.Schedule(t)
             dict, cnt'
@@ -230,9 +230,10 @@ module Scheduler =
         }
         loop alarms
         
-    type internal AgendaActor(token) =
-        inherit AutoCancelActor<AgendaCommand>(agendaAccess agendaLog token, agendaLog, token)
-        
+    type internal AgendaActor(logMgr, token) =
+        inherit AutoCancelActor<AgendaCommand>(agendaAccess token logMgr,
+                                               agendaLog logMgr,
+                                               token)
         with
             member this.Process(agenda) =
                 let buildMessage = fun ch -> Process (agenda, ch)

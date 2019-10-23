@@ -37,7 +37,6 @@
     <Content Include="app.config" />
     <PackageReference Include="FSharp.Core" Version="4.7.0" />
     <PackageReference Include="FSharp.Data" Version="3.3.2" />
-    <PackageReference Include="FsToolkit.ErrorHandling" Version="1.2.3" />
     <PackageReference Include="NodaTime" Version="2.4.7" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
     <ProjectReference Include="..\spwncomm\spwncomm.fsproj" />

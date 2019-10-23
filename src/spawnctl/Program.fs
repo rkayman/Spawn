@@ -1,8 +1,8 @@
 ﻿namespace Spawn
 
-open Common
-open IO.Pipes
-open Messages
+open Spawn.Common
+open Spawn.IO.Pipes
+open Spawn.Messages
 open NodaTime
 open System.Globalization
 open System.Reflection
@@ -66,16 +66,10 @@ module CLI =
             
         let handleResponse response =
             match response with
-            | Imported info ->
-                printfn "Processed %d alarms total. There were %d unique alarms" info.total info.distinct
-                
-            | Removed qty ->
-                printfn "Removed %d alarms" qty
-                
-            | VersionReported ver ->
-                printfn "%s" ver
-                
-            | Listed alarms ->
+            | Imported info       -> printfn "Processed %d alarms total. There were %d unique alarms" info.total info.distinct
+            | Removed qty         -> printfn "Removed %d alarms" qty
+            | VersionReported ver -> printfn "%s" ver
+            | Listed alarms       ->
                 let formattedPrint = printfn "%-12s │ %-12s │ %-30s │ %7s │ %-19s"
                 formattedPrint "ALARM ID" "DOMAIN" "NAME" "COUNT" "LAST TRIGGERED"
                 alarms |> Seq.iter (fun x -> formattedPrint (x.id.ToShortString())
@@ -89,7 +83,7 @@ module CLI =
         let appTitle = Assembly.GetEntryAssembly().GetCustomAttributes<AssemblyTitleAttribute>()
                        |> Seq.map (fun x -> x.Title)
                        |> String.concat ", "
-        
+                       
         try
             cts.CancelAfter(timeout)
             match command |> CommandLine.toRequest cts.Token with
@@ -98,12 +92,14 @@ module CLI =
                 async {
                     let serializer (request: Request) = request.Serialize()
                     let deserializer = Response.Deserialize
-                    let! response = client.SendAsync(request, serializer, deserializer)
                     
-                    response
-                    |> Result.map handleResponse
-                    |> Result.mapError (string >> eprintfn "%s")
-                    |> ignore
+                    try
+                        let! response =
+                            client.SendAsync(request, request.ActivityId, request.Name, serializer, deserializer)
+                    
+                        response |> handleResponse
+
+                    with ex -> eprintfn "%A" ex
                 } |> Async.RunSynchronously
             
             | Choice2Of3 help ->

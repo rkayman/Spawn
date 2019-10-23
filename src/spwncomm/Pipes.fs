@@ -1,6 +1,7 @@
 namespace Spawn
 
-open FsToolkit.ErrorHandling
+open Spawn.Logging
+open FSharpPlus
 open System.Buffers
 open System.IO
 open System.IO.Compression
@@ -22,13 +23,15 @@ module IO =
     exception PipeCannotWrite
     
     module Pipes =
-        let log = Spawn.Logging.Log("Spawn.IO.Pipes")
-        
         type Compressed = Compressed of string
+
         type Serialized = Serialized of string
-        type Message<'T> = Message of 'T
-            
-        let private readAsync stream cancelToken =
+
+        type PipeMessage<'T> = PipeMessage of 'T
+        
+        type Sent = Sent
+
+        let private readAsync stream cancelToken onComplete =
             let cts = CancellationTokenSource.CreateLinkedTokenSource([|cancelToken|])
 
             let buffer : byte [] = Array.zeroCreate _8KB_
@@ -37,7 +40,8 @@ module IO =
                 async {
                     try
                         match isComplete with
-                        | true  -> return sb.ToString().Trim('\x00') |> Compressed |> Ok
+                        | true  ->
+                            return sb.ToString().Trim('\x00') |> Compressed |> onComplete |> Ok
                         | false ->
                             let! bytesRead = ps.ReadAsync(buf.AsMemory(), token).AsTask() |> Async.AwaitTask
                             let chunk = Encoding.UTF8.GetString(ReadOnlySpan(buf, 0, bytesRead))
@@ -46,171 +50,225 @@ module IO =
                             return! readLoopAsync ps token buf sb isComplete'
                     with ex -> return Error ex
                 }
-            readLoopAsync stream cts.Token buffer builder false |> Async.RunSynchronously
+            readLoopAsync stream cts.Token buffer builder false
             
-        let private decompress compressed =
-            try
-                let (Compressed message) = compressed
-                let decompressed : byte [] = Array.zeroCreate _10MB_
-                let msg = message |> Convert.FromBase64String
+        let private decompress event =
+            let (Compressed body) = event.body
+            let decompressed : byte [] = Array.zeroCreate _10MB_
+            let body' = body |> Convert.FromBase64String
+            
+            use decoder = new BrotliDecoder()
+            match decoder.Decompress(ReadOnlySpan(body'), Span(decompressed)) with
+            | OperationStatus.Done, _, written ->
+                Encoding.UTF8.GetString(ReadOnlySpan(decompressed, 0, written))
+                |> Serialized
+                |> nextEvent event "Decompressed"
                 
-                use decoder = new BrotliDecoder()
-                match decoder.Decompress(ReadOnlySpan(msg), Span(decompressed)) with
-                | OperationStatus.Done, _, written ->
-                    Encoding.UTF8.GetString(ReadOnlySpan(decompressed, 0, written))
-                    |> Serialized
-                    |> Ok
-                    
-                | status, consumed, written ->
-                    let msg = (status.ToString(), consumed, written)
-                              |||> sprintf "[%s] Failed to decompress the message. %d bytes consumed and %d bytes written"
-                    match status with
-                    | OperationStatus.InvalidData -> InvalidDataException(msg) :> exn |> Error
-                    | _ -> IOException(msg) :> exn |> Error
-
-            with ex -> Error ex
+            | status, consumed, written ->
+                let msg = (status.ToString(), consumed, written)
+                          |||> sprintf "[%s] Failed to decompress the message. %d bytes consumed and %d bytes written"
+                match status with
+                | OperationStatus.InvalidData -> InvalidDataException(msg) |> raise //:> exn |> Error
+                | _ -> IOException(msg) |> raise //:> exn |> Error
             
-        let inline private deserializeMessage (deserializer: string -> 'T) serialized =
-            try
-                let (Serialized contents) = serialized
-                let pipeline = deserializer >> Message >> Ok
-                contents |> pipeline
-            with ex -> Error ex
+        let private deserializeMessage deserialize event =
+            let (Serialized body) = event.body
+            let pipeline = deserialize >> PipeMessage >> (nextEvent event "Deserialized")
+            body |> pipeline
             
-        let inline private handleRequest (handler: 'Request -> 'Response) request =
-            try
-                let (Message req) = request
-                let pipeline = handler >> Message >> Ok
-                req |> pipeline
-            with ex -> Error ex
+        let private handleRequest (handler: 'Request -> 'Response) event =
+            let (PipeMessage msg) = event.body
+            let pipeline = handler >> PipeMessage >> (nextEvent event "ResponseCreated")
+            msg |> pipeline
             
-        let inline private serializeMessage (serializer: 'T -> string) message =
-            try
-                let (Message msg) = message
-                let pipeline = serializer >> Serialized >> Ok
-                msg |> pipeline
-            with ex -> Error ex
+        let private serializeMessage serialize event =
+            let (PipeMessage msg) = event.body
+            let pipeline = serialize >> string >> Serialized >> (nextEvent event "Serialized")
+            msg |> pipeline
         
-        let private compress serialized =
-            try
-                let (Serialized contents) = serialized
-                let msg = Encoding.UTF8.GetBytes(contents)
-                let maxSize = BrotliEncoder.GetMaxCompressedLength(Seq.length msg)
-                let compressed : byte [] = Array.zeroCreate maxSize
-                let consumed = ref 0
-                let written = ref 0
-                                    
-                use encoder = new BrotliEncoder(5, 22)
-                match encoder.Compress(ReadOnlySpan(msg), Span(compressed), consumed, written, true) with
-                | OperationStatus.Done ->
-                    let pipeline = Convert.ToBase64String >> Compressed >> Ok
-                    pipeline compressed
-                    
-                | status ->
-                    let message = (status.ToString(), !consumed, !written)
-                                  |||> sprintf "[%s]! Failed to compress the message. %d bytes consumed and %d bytes written"
-                    match status with
-                    | OperationStatus.InvalidData -> InvalidDataException(message) :> exn |> Error
-                    | _ -> IOException(message) :> exn |> Error
-
-            with ex -> Error ex
+        let private compress event =
+            let (Serialized body) = event.body
+            let msg = Encoding.UTF8.GetBytes(body)
+            let maxSize = BrotliEncoder.GetMaxCompressedLength(Seq.length msg)
+            let compressed : byte [] = Array.zeroCreate maxSize
+            let consumed = ref 0
+            let written = ref 0
+                                
+            use encoder = new BrotliEncoder(5, 22)
+            match encoder.Compress(ReadOnlySpan(msg), Span(compressed), consumed, written, true) with
+            | OperationStatus.Done ->
+                let pipeline = Convert.ToBase64String >> Compressed >> (nextEvent event "Compressed")
+                pipeline compressed
+                
+            | status ->
+                let message =
+                    (status.ToString(), !consumed, !written)
+                    |||> sprintf "[%s]! Failed to compress the message. %d bytes consumed and %d bytes written"
+                match status with
+                | OperationStatus.InvalidData -> InvalidDataException(message) |> raise
+                | _ -> IOException(message) |> raise
         
-        let private writeAsync (stream: PipeStream) cancelToken compressed =
-            let cts = CancellationTokenSource.CreateLinkedTokenSource([|cancelToken|])
+        let private writeAsync (stream: PipeStream) cancelToken event =
+            async {
+                let cts = CancellationTokenSource.CreateLinkedTokenSource([|cancelToken|])
 
-            let msgEnd = Encoding.UTF8.GetBytes([|'\x00';'\x00'|]) |> ReadOnlyMemory
-            let msg = compressed |> function Compressed x -> x
-            let bytes = Encoding.UTF8.GetBytes(msg)
-            if not stream.IsConnected then Error PipeNotConnected
-            elif not stream.CanWrite then Error PipeCannotWrite
-            else
-                async {
-                    try
-                        do! stream.WriteAsync(ReadOnlyMemory(bytes), cts.Token).AsTask() |> Async.AwaitTask
-                        do! stream.WriteAsync(msgEnd, cts.Token).AsTask() |> Async.AwaitTask
-                        do! stream.FlushAsync(cts.Token) |> Async.AwaitTask
-                        stream.WaitForPipeDrain()
-                        return Ok ()
-                    with ex -> return Error ex
-                } |> Async.RunSynchronously
+                let (Compressed body) = event.body
+                let msgEnd = Encoding.UTF8.GetBytes([|'\x00';'\x00'|]) |> ReadOnlyMemory
+                let bytes = Encoding.UTF8.GetBytes(body)
+                
+                if not stream.IsConnected then raise PipeNotConnected
+                if not stream.CanWrite then raise PipeCannotWrite
+                
+                do! stream.WriteAsync(ReadOnlyMemory(bytes), cts.Token).AsTask() |> Async.AwaitTask
+                do! stream.WriteAsync(msgEnd, cts.Token).AsTask() |> Async.AwaitTask
+                do! stream.FlushAsync(cts.Token) |> Async.AwaitTask
+                return nextEvent event "Sent" Sent
+            }
+            
 
-        type SpawnServer(pipeName, ?token: CancellationToken) =
-            let log = Logging.Log("Spawn.IO.Pipes.SpawnServer")
+        type SpawnPipeHelper(?log: Logging.Log, ?token: CancellationToken) =
+            let pipeCancel = token |> Option.map (fun t -> CancellationTokenSource.CreateLinkedTokenSource([|t|]))
+                                   |> Option.defaultValue (new CancellationTokenSource())
+                                   
+            let defaultLog g f = log |> Option.map f |> Option.defaultValue g
+            
+            let defaultLogUnit = defaultLog (fun _ -> ())
+            
+            member this.TokenSource with get() = pipeCancel
+            
+            member this.LogInfo = defaultLogUnit (fun x -> x.Info)
+            member this.LogDebug = defaultLogUnit (fun x -> x.Debug)
+            member this.LogError(ex) = ex |> sprintf "%A" |> defaultLogUnit (fun x -> x.Error)
+            member this.CancelAfter(timespan: TimeSpan) =
+                pipeCancel.CancelAfter(timespan)
+                timespan.Seconds |> sprintf "Set to cancel after %d seconds" |> this.LogInfo
+
+                
+        type SpawnServer(pipeName, logMgr, ?token: CancellationToken) as self =
+            inherit SpawnPipeHelper(Logging.Log(logMgr, "Spawn.IO.Pipes.SpawnServer"), ?token = token)
             
             let pipe = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1,
                                                  PipeTransmissionMode.Byte,
                                                  PipeOptions.WriteThrough ||| PipeOptions.Asynchronous)
-            
-            let serverCancel = token |> Option.map (fun t -> CancellationTokenSource.CreateLinkedTokenSource([|t|]))
-                                     |> Option.defaultValue (new CancellationTokenSource())
-            
-            member this.StartAsync(handler, serializer, deserializer) =
+                
+            let waitForConnectionAsync (opCancel: CancellationTokenSource) =
                 async {
-                    while not serverCancel.IsCancellationRequested do
-                        use opCancel = CancellationTokenSource.CreateLinkedTokenSource([|serverCancel.Token|])
-                        
-                        if not pipe.IsConnected then
-                            "Waiting for connection..." |> log.Info
-                            do! pipe.WaitForConnectionAsync(opCancel.Token) |> Async.AwaitTask
-                            opCancel.CancelAfter(DefaultTimeout)
-                            pipe.GetImpersonationUserName() |> sprintf "Connected as %s" |> log.Info
+                    let sessionId = Guid.NewGuid()
+                    if pipe.IsConnected then pipe.Disconnect()
+
+                    let session = newEvent sessionId "ServerConnecting" "Waiting for connection..."
+                    session.ToString() |> self.LogInfo
+                    do! pipe.WaitForConnectionAsync(opCancel.Token) |> Async.AwaitTask
+                    opCancel.CancelAfter(DefaultTimeout)
+                            
+                    return pipe.GetImpersonationUserName() |> sprintf "Server connected (%s)"
+                           |> nextEvent session "ServerConnected" 
+                }
+            
+            let readRequestAsync = readAsync pipe
+            
+            let sendResponseAsync = writeAsync pipe
+            
+            let logResult f x =
+                let ans = f x
+                ans.ToString() |> self.LogInfo
+                ans
+            
+            member this.ListenAsync(handle, serialize: 'b -> string, deserialize) =
+                async {
+                    while not self.TokenSource.IsCancellationRequested do
+                        use opCancel = CancellationTokenSource.CreateLinkedTokenSource([|self.TokenSource.Token|])
                         
                         try
-                            readAsync pipe opCancel.Token
-                            |> Result.bind decompress
-                            |> Result.bind (deserializeMessage deserializer)
-                            |> Result.bind (handleRequest handler)
-                            |> Result.bind (serializeMessage serializer)
-                            |> Result.bind compress
-                            |> Result.bind (writeAsync pipe opCancel.Token)
-                            |> ignore
-                        
+                            try
+                                let! session = waitForConnectionAsync opCancel
+                                session.ToString() |> this.LogInfo
+                                
+                                let onComplete = nextEvent session "RequestReceived"
+                                let! request = readRequestAsync opCancel.Token onComplete
+                                let response =
+                                    request
+                                    |> logResult (Result.either id raise)
+                                    |> logResult (decompress)
+                                    |> logResult (deserializeMessage deserialize)
+                                    |> logResult (handleRequest handle)
+                                    |> logResult (serializeMessage serialize)
+                                    |> logResult (compress)
+                                
+                                let! sent = sendResponseAsync opCancel.Token response
+                                sent.ToString() |> this.LogInfo
+
+                            with ex -> this.LogError ex
                         finally
                             pipe.Disconnect()
-                            "Disconnected" |> log.Info
+                            this.LogInfo "Disconnected"
                 }
-                    
-                
+            
             interface IDisposable with
                 member this.Dispose() =
-                    "Disposing SpawnServer" |> log.Debug
-                    serverCancel.Cancel()
+                    self.LogDebug "Disposing SpawnServer"
+                    self.TokenSource.Cancel()
                     pipe.Dispose()
-                    serverCancel.Dispose()
-                    "SpawnServer disposed" |> log.Debug
+                    self.TokenSource.Dispose()
+                    self.LogDebug "SpawnServer disposed"
         
-        type SpawnClient(serverName, pipeName, ?token: CancellationToken) =
+        type SpawnClient(serverName, pipeName, ?token: CancellationToken) as self =
+            inherit SpawnPipeHelper(?token = token)
             
             let pipe = new NamedPipeClientStream(serverName, pipeName, PipeDirection.InOut,
                                                  PipeOptions.Asynchronous ||| PipeOptions.WriteThrough)
             
-            let clientCancel = token |> Option.map (fun t -> CancellationTokenSource.CreateLinkedTokenSource([|t|]))
-                                     |> Option.defaultValue (new CancellationTokenSource())
-            
-            member this.SendAsync(request, serializer, deserializer) =
-                clientCancel.CancelAfter(DefaultTimeout)
-                
+            let ensureConnectedAsync (token: CancellationToken) =
                 async {
                     if not pipe.IsConnected then
-                        do! pipe.ConnectAsync(clientCancel.Token) |> Async.AwaitTask
+                        self.LogInfo "Client not connected. Connecting now..."
+                        do! pipe.ConnectAsync(token) |> Async.AwaitTask
                     
-                    request
-                    |> Result.Ok
-                    |> Result.map Message
-                    |> Result.bind (serializeMessage serializer)
-                    |> Result.bind compress
-                    |> Result.bind (writeAsync pipe clientCancel.Token)
-                    |> ignore
+                    self.LogInfo "Client connected"
+                }
+                
+            let prepareRequest serialize activity name command =
+                try
+                    command
+                    |> PipeMessage
+                    |> newEvent activity name
+                    |> serializeMessage serialize
+                    |> compress
+                    |> Ok
+                with ex -> Error ex
+                
+            let sendRequestAsync = writeAsync pipe self.TokenSource.Token
+            
+            let waitForResponseAsync = readAsync pipe self.TokenSource.Token
+            
+            let unwrapResponse event =
+                let (PipeMessage body) = event.body
+                body
+            
+            member this.SendAsync(command, activity, name, serialize, deserialize) =
+                async {
+                    this.CancelAfter(DefaultTimeout)
+                    do! ensureConnectedAsync self.TokenSource.Token
+
+                    let request = command
+                                  |> prepareRequest serialize activity name
+                                  |> Result.either id raise
+                    let! sent   = request |> sendRequestAsync
                     
-                    return
-                        readAsync pipe clientCancel.Token
-                        |> Result.bind decompress
-                        |> Result.bind (deserializeMessage deserializer)
-                        |> Result.bind (function Message x -> Ok x)
+                    let onComplete = nextEvent sent "MessageRead"
+                    let! compressed = waitForResponseAsync onComplete
+                    let response =
+                        compressed
+                        |> Result.either id raise
+                        |> decompress
+                        |> deserializeMessage deserialize
+                        |> unwrapResponse
+                    
+                    return response
                 }
             
             interface IDisposable with
                 member this.Dispose() =
-                    clientCancel.Cancel()
+                    self.TokenSource.Cancel()
                     pipe.Dispose()
-                    clientCancel.Dispose()
+                    self.TokenSource.Dispose()

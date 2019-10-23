@@ -19,14 +19,13 @@
 
   <ItemGroup>
     <Compile Include="Logging.fs" />
+    <Compile Include="Shared.fs" />
     <Compile Include="Pipes.fs" />
-    <Compile Include="Common.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Fleece.FSharpData" Version="0.8.0-alpha-3" />
     <PackageReference Include="FSharpPlus" Version="1.1.0-CI00272" />
-    <PackageReference Include="FsToolkit.ErrorHandling" Version="1.2.3" />
     <PackageReference Include="Hopac" Version="0.4.1" />
     <PackageReference Include="Logary" Version="5.0.0" />
     <PackageReference Include="NodaTime" Version="2.4.7" />

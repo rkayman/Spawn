@@ -14,7 +14,7 @@ module Messages =
         | ByDomain of string option
         | ByName of string option
         | ById of string option
-    with
+
         static member JsonObjCodec =
             jchoice [
                 ByDomain <!> jreq "by-domain" (function ByDomain x -> Some x | _ -> None)
@@ -29,7 +29,14 @@ module Messages =
         | List of RequestOption
         | Remove of RequestOption
         | Version of unit
-    with
+        
+        override this.ToString() =
+            match this with
+            | Import x   -> sprintf "Import %d bytes of json" x.Length
+            | List x     -> sprintf "List %A" x
+            | Remove x   -> sprintf "Remove %A" x
+            | Version () -> sprintf "Show version" 
+
         static member JsonObjCodec =
             jchoice [
                 Import  <!> jreq "import"  (function Import json -> Some json | _ -> None)
@@ -41,32 +48,44 @@ module Messages =
         static member Deserialize(json) : Request =
             parseJson json
             |> Result.either (id) (sprintf "%A" >> invalidOp)
-        
-        member this.Serialize() = this |> toJson |> string
 
+        member this.Serialize() = this |> toJson |> string
+        
+        member this.ActivityId with get() = match this with
+                                            | Import _  -> new Guid("C82D9F51-662C-4B88-A351-7A1B9BD6EE4B")
+                                            | List _    -> new Guid("FA2E7A80-9701-4473-BAEE-347D9847147B")
+                                            | Remove _  -> new Guid("788FE8D2-C3BD-4307-8853-593DA10814EF")
+                                            | Version _ -> new Guid("118E30CD-124D-4061-BAF5-1D183A52E266")
+            
+        member this.Name with get() = match this with
+                                      | Import _  -> "ImportRequested"
+                                      | List _    -> "ListRequested"
+                                      | Remove _  -> "RemoveRequested"
+                                      | Version _ -> "VersionRequested"
+            
     type ImportedInfo =
         { total: int
           distinct: int }
-    with
+
         static member JsonObjCodec =
             fun t d -> { total = t; distinct = d }
             <!> jreq    "total"    (fun x -> Some x.total)
             <*> jreq    "distinct" (fun x -> Some x.distinct)
             
-    let private instantToJson (x: Instant) = x |> NodaTime.Text.InstantPattern.General.Format |> JString
+    let internal instantToJson (x: Instant) = x |> NodaTime.Text.InstantPattern.General.Format |> JString
     
-    let private (|Instant|_|) (str: string) =
+    let internal (|Instant|_|) (str: string) =
         match NodaTime.Text.InstantPattern.General.Parse(str).TryGetValue(Instant.MinValue) with
         | true, instant -> Some instant
         | false, _ -> None
 
-    let private jsonToInstant = function
+    let internal jsonToInstant = function
         | JString x as json -> match x with
                                | Instant z -> Decode.Success z
                                | _ -> Decode.Fail.invalidValue json x
         | json -> Decode.Fail.strExpected json
         
-    let private instantCodec = jsonToInstant, instantToJson
+    let internal instantCodec = jsonToInstant, instantToJson
     
     type AlarmInfo =
         { id: Guid
@@ -74,7 +93,7 @@ module Messages =
           name: string
           count: int64
           last: Instant option }
-    with
+
         static member JsonObjCodec =
             fun i d n c l -> { id = i; domain = d; name = n; count = c; last = l }
             <!> jreq                     "id"      (fun x -> Some x.id)
@@ -88,7 +107,14 @@ module Messages =
         | Listed of AlarmInfo[]
         | Removed of int
         | VersionReported of string
-    with
+        
+        override this.ToString() =
+            match this with
+            | Imported x        -> sprintf "Imported %d of %d alarms" x.distinct x.total
+            | Listed x          -> sprintf "Listed %d alarms" x.Length
+            | Removed x         -> sprintf "Removed %d alarms" x
+            | VersionReported x -> sprintf "Reported version = %s" x
+
         static member JsonObjCodec =
             jchoice [
                 Imported        <!> jreq "imported" (function Imported x -> Some x | _ -> None)
@@ -102,7 +128,7 @@ module Messages =
             |> Result.either (id) (sprintf "%A" >> invalidOp)
     
         member this.Serialize() = this |> toJson |> string
-
+            
 
 module Common =    
     type System.Guid with
